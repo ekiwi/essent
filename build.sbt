@@ -23,6 +23,7 @@ assemblyJarName in assembly := "essent.jar"
 
 assemblyOutputPath in assembly := file("./utils/bin/essent.jar")
 
+test in assembly := {}
 
 // Ignore disabled .scala files
 unmanagedSources / excludeFilter := HiddenFileFilter || "*disabled*.scala"
