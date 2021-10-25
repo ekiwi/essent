@@ -19,7 +19,9 @@ case class OptFlags(
     partStats: Boolean = false,
     partCutoff: Int = 20,
     essentLogLevel: String = "warn",
-    firrtlLogLevel: String = "warn") {
+    firrtlLogLevel: String = "warn",
+    emitJava: Boolean = false,
+    ) {
   def inputFileDir() = firInputFile.getParent
   def outputDir() = if (inputFileDir == null) "" else inputFileDir()
 }
@@ -105,6 +107,9 @@ class ArgsParser {
     opt[Int]("part-cutoff").action( (x, c) => c.copy(
         partCutoff = x)
     ).text("parameter used for partitioning")
+
+    opt[Unit]("java").action( (_, c) => c.copy(emitJava = true)
+    ).text("generate Java instead of C++ code")
   }
 
   def getConfig(args: Seq[String]): Option[OptFlags] = parser.parse(args, OptFlags())

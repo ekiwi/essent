@@ -413,7 +413,7 @@ class EssentCompiler(opt: OptFlags) {
   def compileAndEmit(circuit: Circuit) {
     val topName = circuit.main
     if (opt.writeHarness) {
-      val harnessFilename = new File(opt.outputDir, s"$topName-harness.cc")
+      val harnessFilename = new File(s"$topName-harness.cc")
       val harnessWriter = new FileWriter(harnessFilename)
       HarnessGenerator.topFile(topName, harnessWriter)
       harnessWriter.close()
@@ -421,13 +421,19 @@ class EssentCompiler(opt: OptFlags) {
     val firrtlCompiler = new transforms.Compiler(readyForEssent)
     val resultState = firrtlCompiler.execute(CircuitState(circuit, Seq()))
     if (opt.dumpLoFirrtl) {
-      val debugWriter = new FileWriter(new File(opt.outputDir, s"$topName.lo.fir"))
+      val debugWriter = new FileWriter(new File(s"$topName.lo.fir"))
       debugWriter.write(resultState.circuit.serialize)
       debugWriter.close()
     }
-    val dutWriter = new FileWriter(new File(opt.outputDir, s"$topName.h"))
-    val emitter = new EssentEmitter(opt, dutWriter)
-    emitter.execute(resultState.circuit)
-    dutWriter.close()
+
+    if(opt.emitJava) {
+      new jvm.JavaEmitter(opt, os.pwd / s"$topName.java").execute(resultState.circuit)
+    } else {
+      val dutWriter = new FileWriter(new File(s"$topName.h"))
+      val emitter = new EssentEmitter(opt, dutWriter)
+      emitter.execute(resultState.circuit)
+      dutWriter.close()
+    }
+
   }
 }
