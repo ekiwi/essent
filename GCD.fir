@@ -1,4 +1,4 @@
- circuit GCD :
+circuit GCD :
   module GCD : 
     input clk : Clock
     input reset : UInt<1>
