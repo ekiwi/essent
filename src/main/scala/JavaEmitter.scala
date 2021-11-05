@@ -1,10 +1,11 @@
 package essent
 
-import essent.Emitter.{emitPort, genCppType, initializeVals}
+import essent.Emitter.initializeVals
 import essent.Extract.{findInstancesOf, findModule, findModuleInstances}
-import firrtl.ir.{AsyncResetType, Circuit, DefMemory, DefRegister, ExtModule, IntWidth, Module, SIntType, Type, UIntType}
+import firrtl.ir.{AsyncResetType, Circuit, ClockType, DefMemory, DefRegister, ExtModule, IntWidth, Module, Port, SIntType, Type, UIntType}
 
 import java.io.Writer
+import scala.math.BigInt
 
 class JavaEmitter(initialOpt: OptFlags, writer: Writer) {
   val tabs = "  "
@@ -16,18 +17,25 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) {
   }
 
   def genJavaType(tpe: Type) = tpe match {
-    case UIntType(IntWidth(w)) => "public int"
-    case SIntType(IntWidth(w)) => "public int"
+    case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
+    case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
     case AsyncResetType => "public boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
 
+  def emitPort(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
+    case ClockType => if (!topLevel) Seq()
+    else Seq(genJavaType(UIntType(IntWidth(1))) + " " + p.name + " = false;")
+    // FUTURE: suppress generation of clock field if not making harness (or used)?
+    case _ => if (!topLevel) Seq()
+    else Seq(genJavaType(p.tpe) + " " + p.name + " = 0;")
+  }
 
   def declareModule(m: Module, topName: String) {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap {d: DefRegister => {
-      val typeStr = genCppType(d.tpe)
+      val typeStr = genJavaType(d.tpe)
       val regName = d.name
       Seq(s"$typeStr $regName;")
     }}
@@ -46,11 +54,7 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) {
     writeLines(1, memDecs)
     writeLines(1, m.ports flatMap emitPort(modName == topName))
     writeLines(1, moduleDecs)
-    writeLines(0, "")
-    writeLines(1, s"$modName() {")
-    writeLines(2, initializeVals(modName == topName)(m, registers, memories))
-    writeLines(1, "}")
-
+    writeLines(0, "}")
   }
 
   def execute(circuit: Circuit): Unit = {
