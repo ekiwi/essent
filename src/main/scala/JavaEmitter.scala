@@ -28,7 +28,11 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) {
     else Seq(genJavaType(UIntType(IntWidth(1))) + " " + p.name + " = false;")
     // FUTURE: suppress generation of clock field if not making harness (or used)?
     case _ => if (!topLevel) Seq()
-    else Seq(genJavaType(p.tpe) + " " + p.name + " = 0;")
+    else
+      if (p.tpe == UIntType(IntWidth(1)))
+        Seq(genJavaType(p.tpe) + " " + p.name + " = false;")
+      else
+        Seq(genJavaType(p.tpe) + " " + p.name + " = 0;")
   }
 
   def declareModule(m: Module, topName: String) {
@@ -37,7 +41,7 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) {
     val registerDecs = registers flatMap {d: DefRegister => {
       val typeStr = genJavaType(d.tpe)
       val regName = d.name
-      Seq(s"$typeStr $regName;")
+      Seq(s"$typeStr $regName = 0;")
     }}
     val memDecs = memories map {m: DefMemory => {
       s"${genJavaType(m.dataType)} ${m.name}[${m.depth}];"
