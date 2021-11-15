@@ -11,3 +11,5 @@ utils/bin/essent.jar
 
 # IDE related
 .idea/*
+
+GCD.java
