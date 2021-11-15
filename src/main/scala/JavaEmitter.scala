@@ -142,7 +142,7 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
       case m: Module => declareModule(m, topName)
     }
     val topModule = findModule(topName, circuit) match {case m: Module => m}
-
+    
     writeLines(1, s"public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
 
     if(initialOpt.useCondParts)
