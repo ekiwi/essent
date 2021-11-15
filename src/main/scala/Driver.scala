@@ -2,7 +2,6 @@ package essent
 
 import scala.io.Source
 import scala.sys.process._
-
 import logger._
 
 
@@ -20,8 +19,13 @@ object Driver {
     val sourceReader = Source.fromFile(opt.firInputFile)
     val circuit = firrtl.Parser.parse(sourceReader.getLines, firrtl.Parser.IgnoreInfo)
     sourceReader.close()
-    val compiler = new EssentCompiler(opt)
-    compiler.compileAndEmit(circuit)
+    if (opt.java) {
+      val compiler = new JavaCompiler(opt)
+      compiler.compileAndEmit(circuit)
+    } else {
+      val compiler = new EssentCompiler(opt)
+      compiler.compileAndEmit(circuit)
+    }
   }
 
   def compileCPP(dutName: String, buildDir: String): ProcessBuilder = {

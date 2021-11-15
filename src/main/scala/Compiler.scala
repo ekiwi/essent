@@ -432,13 +432,6 @@ class EssentCompiler(opt: OptFlags) {
       debugWriter.write(resultState.circuit.serialize)
       debugWriter.close()
     }
-    if (opt.java) {
-      val dutWriter = new FileWriter(new File(opt.outputDir, s"$topName.java"))
-      val emitter = new JavaEmitter(opt, dutWriter)
-      emitter.execute(resultState.circuit)
-      dutWriter.close()
-      return
-    }
     val dutWriter = new FileWriter(new File(opt.outputDir, s"$topName.h"))
     val emitter = new EssentEmitter(opt, dutWriter)
     emitter.execute(resultState.circuit)

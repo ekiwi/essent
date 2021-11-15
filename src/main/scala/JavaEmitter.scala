@@ -1,31 +1,11 @@
 package essent
 
-import essent.Emitter.{splatLargeLiteralIntoRawArray}
-import essent.Extract.{findDependencesStmt, findExternalPorts, findInstancesOf, findModule, findModuleInstances, findResultName, logger}
-import essent.ir.{CondMux, MemWrite, RegUpdate}
-import firrtl.PrimOps.{Add, And, Andr, AsAsyncReset, AsClock, AsSInt, AsUInt, Bits, Cat, Cvt, Div, Dshl, Dshr, Eq, Geq, Gt, Head, Leq, Lt, Mul, Neg, Neq, Not, Or, Orr, Pad, Rem, Shl, Shr, Sub, Tail, Xor, Xorr}
-import firrtl.{Addw, Dshlw, Subw, WDefInstance, WRef, WSubAccess, WSubField, bitWidth}
-import firrtl.ir.{AsyncResetType, Block, Circuit, ClockType, Connect, DefMemory, DefNode, DefRegister, DefWire, DoPrim, Expression, IntWidth, Module, Mux, Port, Print, SIntLiteral, SIntType, Statement, Stop, Type, UIntLiteral, UIntType}
+import essent.ir._
+import firrtl._
+import firrtl.ir._
+import firrtl.PrimOps._
 
-import java.io.Writer
-import _root_.logger._
-
-class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
-  val tabs = "  "
-  val flagVarName = "PARTflags"
-  val actVarName = "ACTcounts"
-  val sigTrackName = "SIGcounts"
-  val sigActName = "SIGact"
-  val sigExtName = "SIGext"
-  var sigNameToID = Map[String,Int]()
-  implicit val rn = new Renamer
-
-  def writeLines(indentLevel: Int, lines: String): Unit = writeLines(indentLevel, Seq(lines))
-
-  def writeLines(indentLevel: Int, lines: Seq[String]): Unit = {
-    lines.foreach { s => writer.write(tabs*indentLevel + s + "\n") }
-  }
-
+object JavaEmitter {
   def genPublicJavaType(tpe: Type) = tpe match {
     case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
     case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
@@ -51,118 +31,6 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
       else
         Seq(genPublicJavaType(p.tpe) + " " + p.name + " = 0;")
   }
-
-  def declareModule(m: Module, topName: String) {
-    val registers = findInstancesOf[DefRegister](m.body)
-    val memories = findInstancesOf[DefMemory](m.body)
-    val registerDecs = registers flatMap {d: DefRegister => {
-      val typeStr = genPublicJavaType(d.tpe)
-      val regName = d.name
-      Seq(s"$typeStr $regName = 0;")
-    }}
-    val memDecs = memories map {m: DefMemory => {
-      s"${genPublicJavaType(m.dataType)} ${m.name}[${m.depth}];"
-    }}
-    val modulesAndPrefixes = findModuleInstances(m.body)
-    val moduleDecs = modulesAndPrefixes map { case (module, fullName) => {
-      val instanceName = fullName.split("\\.").last
-      s"$module $instanceName;"
-    }} // Need to check what this does
-
-    val modName = m.name
-    writeLines(0, s"class ${modName} {")
-    writeLines(1, registerDecs)
-    writeLines(1, memDecs)
-    writeLines(1, m.ports flatMap emitPort(modName == topName))
-    writeLines(1, moduleDecs)
-  }
-
-  def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags) {
-    stmt match {
-      case mw: MemWrite =>
-      case _ => {
-        val resultName = findResultName(stmt)
-        resultName match {
-          case Some(name) => {
-            val cleanName = name.replace('.','$')
-            writeLines(indentLevel, s"$sigTrackName[${sigNameToID(name)}] += $name != old::$cleanName ? 1 : 0;")
-            if (opt.trackExts) {
-              writeLines(indentLevel, s"$sigActName[${sigNameToID(name)}] = $name != old::$cleanName;")
-              val depNames = findDependencesStmt(stmt).head.deps
-              val trackedDepNames = depNames filter sigNameToID.contains
-              val depTrackers = trackedDepNames map {name => s"$sigActName[${sigNameToID(name)}]"}
-              val anyDepActive = depTrackers.mkString(" || ")
-              if (anyDepActive.nonEmpty)
-                writeLines(indentLevel, s"$sigExtName[${sigNameToID(name)}] += !$sigActName[${sigNameToID(name)}] && ($anyDepActive) ? 1 : 0;")
-            }
-            writeLines(indentLevel, s"old::$cleanName = $name;")
-          }
-          case None =>
-        }
-      }
-    }
-  }
-
-
-  def writeBodyInner(indentLevel: Int, sg: StatementGraph, opt: OptFlags,
-                     keepAvail: Set[String] = Set()): Unit = {
-
-    if (opt.conditionalMuxes)
-      MakeCondMux(sg, rn, keepAvail)
-    val noMoreMuxOpts = opt.copy(conditionalMuxes = false)
-    sg.stmtsOrdered foreach { stmt => stmt match {
-      case cm: CondMux => {
-        if (rn.nameToMeta(cm.name).decType == MuxOut)
-          writeLines(indentLevel, s"${genJavaType(cm.mux.tpe)} ${rn.emit(cm.name)};")
-        val muxCondRaw = emitExpr(cm.mux.cond)
-        val muxCond = if (muxCondRaw == "reset") s"UNLIKELY($muxCondRaw)" else muxCondRaw
-        writeLines(indentLevel, s"if ($muxCond) {")
-        writeBodyInner(indentLevel + 1, StatementGraph(cm.tWay), noMoreMuxOpts)
-        writeLines(indentLevel, "} else {")
-        writeBodyInner(indentLevel + 1, StatementGraph(cm.fWay), noMoreMuxOpts)
-        writeLines(indentLevel, "}")
-      }
-      case _ => {
-        writeLines(indentLevel, emitStmt(stmt))
-        if (opt.trackSigs) emitSigTracker(stmt, indentLevel, opt)
-      }
-    }}
-
-  }
-
-  def execute(circuit: Circuit): Unit = {
-    val topName = circuit.main
-    val opt = initialOpt
-    val sg = StatementGraph(circuit, opt.removeFlatConnects)
-
-    logger.info(sg.makeStatsString)
-    val containsAsserts = sg.containsStmtOfType[Stop]()
-    val extIOMap = findExternalPorts(circuit)
-    val condPartWorker = MakeCondPart(sg, rn, extIOMap)
-    rn.populateFromSG(sg, extIOMap)
-    if (opt.useCondParts) {
-      condPartWorker.doOpt(opt.partCutoff)
-    } else {
-      if (opt.regUpdates)
-        OptElideRegUpdates(sg)
-    }
-
-    circuit.modules foreach {
-      case m: Module => declareModule(m, topName)
-    }
-    val topModule = findModule(topName, circuit) match {case m: Module => m}
-    
-    writeLines(1, s"public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
-
-    if(initialOpt.useCondParts)
-      writeLines(0, "not implemented")
-    else
-      writeBodyInner(2, sg, opt)
-
-    writeLines(1, "}")
-    writeLines(0, "}")
-  }
-
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
     case u: UIntLiteral => {
@@ -170,14 +38,14 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
       val width = bitWidth(u.tpe)
       val asDecStr = u.value.toString(10)
       if ((width <= 64) || (u.value <= maxIn64Bits)) {
-          s"$asDecStr"
+        s"$asDecStr"
       }
       else s"(${splatLargeLiteralIntoRawArray(u.value, width)})"
     }
     case u: SIntLiteral => {
       val width = bitWidth(u.tpe)
       if ((width <= 64)) {
-          s"${u.value.toString(10)}"
+        s"${u.value.toString(10)}"
       }
       else s"(${splatLargeLiteralIntoRawArray(u.value, width)})"
     }
@@ -232,7 +100,7 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
       case Cat => s"${emitExprWrap(p.args(0))}.cat(${emitExpr(p.args(1))})"
       case Bits => s"${emitExprWrap(p.args.head)}.bits<${p.consts(0).toInt},${p.consts(1).toInt}>()"
       case Head => s"${emitExprWrap(p.args.head)}.head<${p.consts.head.toInt}>()"
-//      case Tail => s"${emitExprWrap(p.args.head)}.tail<${p.consts.head.toInt}>()"
+      //      case Tail => s"${emitExprWrap(p.args.head)}.tail<${p.consts.head.toInt}>()"
       case Tail => s"${emitExprWrap(p.args.head)} & 0xffff"
     }
     case _ => throw new Exception(s"Don't yet support $e")
@@ -291,5 +159,20 @@ class JavaEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
   def emitExprWrap(e: Expression)(implicit rn: Renamer): String = e match {
     case DoPrim(_,_,_,_) | Mux(_,_,_,_) => s"(${emitExpr(e)})"
     case _ => emitExpr(e)
+  }
+
+  def splatLargeLiteralIntoRawArray(value: BigInt, width: BigInt): String = {
+    val rawHexStr = value.toString(16)
+    val isNeg = value < 0
+    val asHexStr = if (isNeg) rawHexStr.tail else rawHexStr
+    val arrStr = chunkLitString(asHexStr) map { "0x" + _} mkString(",")
+    val leadingNegStr = if (isNeg) "(uint64_t) -" else ""
+    val numWords = (width + 63) / 64
+    s"std::array<uint64_t,$numWords>({$leadingNegStr$arrStr})"
+  }
+
+  def chunkLitString(litStr: String, chunkWidth:Int = 16): Seq[String] = {
+    if (litStr.size < chunkWidth) Seq(litStr)
+    else chunkLitString(litStr.dropRight(chunkWidth)) ++ Seq(litStr.takeRight(chunkWidth))
   }
 }
