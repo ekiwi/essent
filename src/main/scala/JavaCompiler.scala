@@ -21,9 +21,9 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   val sigTrackName = "SIGcounts"
   val sigActName = "SIGact"
   val sigExtName = "SIGext"
-  var sigNameToID = Map[String, Int]()
+  var sigNameToID: Map[String, Int] = Map[String, Int]()
 
-  implicit val rn = new Renamer
+  implicit val rn: Renamer = new Renamer
 
   def writeLines(indentLevel: Int, lines: String): Unit = writeLines(indentLevel, Seq(lines))
 
@@ -38,18 +38,15 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       val typeStr = genPublicJavaType(d.tpe)
       val regName = d.name
       if (typeStr.contains("BigInt")) Seq(s"$typeStr $regName = new BigInt(0);") else Seq(s"$typeStr $regName = 0;")
-    }
-    }
+    }}
     val memDecs = memories map { m: DefMemory => {
       s"${genPublicJavaType(m.dataType)} ${m.name}[${m.depth}];"
-    }
-    }
+    }}
     val modulesAndPrefixes = findModuleInstances(m.body)
-    val moduleDecs = modulesAndPrefixes map { case (module, fullName) => {
+    val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
       val instanceName = fullName.split("\\.").last
       s"$module $instanceName;"
     }
-    } // Need to check what this does
 
     val modName = m.name
     writeLines(0, s"class ${modName} {")
@@ -64,31 +61,27 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     if (opt.conditionalMuxes)
       MakeCondMux(sg, rn, keepAvail)
     val noMoreMuxOpts = opt.copy(conditionalMuxes = false)
-    sg.stmtsOrdered foreach { stmt =>
-      stmt match {
-        case cm: CondMux => {
-          if (rn.nameToMeta(cm.name).decType == MuxOut)
-            writeLines(indentLevel, s"${genJavaType(cm.mux.tpe)} ${rn.emit(cm.name)};")
-          val muxCondRaw = emitExpr(cm.mux.cond)
-          val muxCond = if (muxCondRaw == "reset") s"UNLIKELY($muxCondRaw)" else muxCondRaw
-          writeLines(indentLevel, s"if ($muxCond) {")
-          writeBodyInner(indentLevel + 1, StatementGraph(cm.tWay), noMoreMuxOpts)
-          writeLines(indentLevel, "} else {")
-          writeBodyInner(indentLevel + 1, StatementGraph(cm.fWay), noMoreMuxOpts)
-          writeLines(indentLevel, "}")
-        }
-        case _ => {
-          writeLines(indentLevel, emitStmt(stmt))
-          if (opt.trackSigs) emitSigTracker(stmt, indentLevel, opt)
-        }
-      }
+    sg.stmtsOrdered foreach {
+      case cm: CondMux =>
+        if (rn.nameToMeta(cm.name).decType == MuxOut)
+          writeLines(indentLevel, s"${genJavaType(cm.mux.tpe)} ${rn.emit(cm.name)};")
+        val muxCondRaw = emitExpr(cm.mux.cond)
+        val muxCond = if (muxCondRaw == "reset") s"UNLIKELY($muxCondRaw)" else muxCondRaw
+        writeLines(indentLevel, s"if ($muxCond) {")
+        writeBodyInner(indentLevel + 1, StatementGraph(cm.tWay), noMoreMuxOpts)
+        writeLines(indentLevel, "} else {")
+        writeBodyInner(indentLevel + 1, StatementGraph(cm.fWay), noMoreMuxOpts)
+        writeLines(indentLevel, "}")
+      case stmt =>
+        writeLines(indentLevel, emitStmt(stmt))
+        if (opt.trackSigs) emitSigTracker(stmt, indentLevel, opt)
     }
   }
 
   def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags) {
     stmt match {
       case mw: MemWrite =>
-      case _ => {
+      case _ =>
         val resultName = findResultName(stmt)
         resultName match {
           case Some(name) => {
@@ -107,7 +100,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
           }
           case None =>
         }
-      }
     }
   }
 
@@ -115,8 +107,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val topName = circuit.main
     val sg = StatementGraph(circuit, opt.removeFlatConnects)
 
-    logger.info(sg.makeStatsString)
-    val containsAsserts = sg.containsStmtOfType[Stop]()
+    logger.info(sg.makeStatsString())
     val extIOMap = findExternalPorts(circuit)
     val condPartWorker = MakeCondPart(sg, rn, extIOMap)
     rn.populateFromSG(sg, extIOMap)
@@ -146,7 +137,6 @@ class JavaCompiler(opt: OptFlags) {
   val readyForEssent: Seq[TransformDependency] =
     firrtl.stage.Forms.LowFormOptimized ++
       Seq(
-        //      Dependency(essent.passes.LegacyInvalidNodesForConds),
         Dependency(essent.passes.ReplaceAsyncRegs),
         Dependency(essent.passes.NoClockConnects),
         Dependency(essent.passes.RegFromMem1),
@@ -163,7 +153,7 @@ class JavaCompiler(opt: OptFlags) {
     val topName = circuit.main
     val firrtlCompiler = new transforms.Compiler(readyForEssent)
     val resultState = firrtlCompiler.execute(CircuitState(circuit, Seq()))
-    val dutWriter = new FileWriter(new File(opt.outputDir, s"$topName.java"))
+    val dutWriter = new FileWriter(new File(opt.outputDir(), s"$topName.java"))
     val emitter = new EssentJavaEmitter(opt, dutWriter)
     emitter.execute(resultState.circuit)
     dutWriter.close()
