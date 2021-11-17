@@ -7,15 +7,15 @@ import firrtl.PrimOps._
 
 object JavaEmitter {
   def genPublicJavaType(tpe: Type) = tpe match {
-    case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
-    case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else "public int"
+    case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInt"
+    case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInt"
     case AsyncResetType => "public boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
 
   def genJavaType(tpe: Type) = tpe match {
-    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else "int"
-    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else "int"
+    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInt"
+    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInt"
     case AsyncResetType => "boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
@@ -25,11 +25,15 @@ object JavaEmitter {
     else Seq(genPublicJavaType(UIntType(IntWidth(1))) + " " + p.name + " = false;")
     // FUTURE: suppress generation of clock field if not making harness (or used)?
     case _ => if (!topLevel) Seq()
-    else
+    else {
+      val publicType = genPublicJavaType(p.tpe)
       if (p.tpe == UIntType(IntWidth(1)))
         Seq(genPublicJavaType(p.tpe) + " " + p.name + " = false;")
+      else if (publicType.contains("BigInt"))
+        Seq(genPublicJavaType(p.tpe) + " " + p.name + " = new BigInt(0);")
       else
         Seq(genPublicJavaType(p.tpe) + " " + p.name + " = 0;")
+    }
   }
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
