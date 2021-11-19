@@ -14,7 +14,7 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.0" % "test"
 
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.9"
 
-libraryDependencies += "edu.berkeley.cs" %% "firrtl" % "1.4.3"
+libraryDependencies += "edu.berkeley.cs" %% "firrtl" % "1.5.0-RC1"
 
 
 // Assembly
