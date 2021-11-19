@@ -13,7 +13,8 @@ object NoClockConnects extends Pass {
   // FUTURE: remove this pass and properly support multi-clock
 
   override def prerequisites = Seq(Dependency(essent.passes.ReplaceAsyncRegs))
-  override def optionalPrerequisites = firrtl.stage.Forms.LowFormOptimized
+  override def optionalPrerequisites =
+    firrtl.stage.Forms.LowFormOptimized ++ Seq(Dependency(firrtl.passes.memlib.VerilogMemDelays))
   override def invalidates(a: Transform) = false
 
   def cutConnectsStmt(s: Statement): Statement = {

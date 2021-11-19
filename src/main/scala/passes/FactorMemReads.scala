@@ -23,7 +23,11 @@ import firrtl.Utils._
 object FactorMemReads extends Pass {
   def desc = "Transforms mem read ports into SubAccesses for easier emission"
 
-  override def prerequisites = Seq(Dependency(essent.passes.RegFromMem1))
+  override def prerequisites = Seq(
+    Dependency(essent.passes.RegFromMem1),
+    // VerilogMemDelays is needed to convert sync read mems to combinatorial read mems
+    Dependency(firrtl.passes.memlib.VerilogMemDelays)
+  )
   override def optionalPrerequisites = firrtl.stage.Forms.LowFormOptimized
   override def invalidates(a: Transform) = false
 
@@ -78,7 +82,10 @@ object FactorMemReads extends Pass {
   def FactorMemReadsModule(m: Module): Module = {
     val memsInModule = findInstancesOf[DefMemory](m.body)
     memsInModule foreach {m =>
-      if(!memHasRightParams(m)) throw new Exception(s"improper mem! $m")}
+      if(!memHasRightParams(m)) {
+        throw new Exception(s"improper mem! $m")
+      }
+    }
     val readPortTypes = (memsInModule flatMap {
       mem => mem.readers map { readPortName => (mem.name + "." + readPortName, mem.dataType) }
     }).toMap
