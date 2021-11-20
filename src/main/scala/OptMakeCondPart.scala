@@ -75,6 +75,7 @@ class MakeCondPart(sg: StatementGraph, rn: Renamer, extIOtypes: Map[String, Type
   def doOpt(smallPartCutoff: Int = 20) {
     val excludedIDs = ArrayBuffer[Int]()
     clumpByStmtType[Print]() foreach { excludedIDs += _ }
+    clumpByStmtType[Verification]() foreach { excludedIDs += _ }
     excludedIDs ++= (sg.nodeRange filterNot sg.validNodes)
     val ap = AcyclicPart(sg, excludedIDs.toSet)
     ap.partition(smallPartCutoff)

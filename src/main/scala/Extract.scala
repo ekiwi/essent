@@ -91,6 +91,7 @@ object Extract extends LazyLogging {
     case ru: RegUpdate => Some(emitExpr(ru.regRef))
     case mw: MemWrite => Some(mw.memName)
     case p: Print => None
+    case v: Verification => None
     case s: Stop => None
     case r: DefRegister => None
     case m: DefMemory => None
@@ -108,6 +109,7 @@ object Extract extends LazyLogging {
     case mw: MemWrite => mw.wrData.tpe
     case cp: CondPart => UnknownType
     case p: Print => UnknownType
+    case v: Verification => UnknownType
     case s: Stop => UnknownType
     case _ => throw new Exception(s"can't find result type of: ${stmt.serialize}")
   }
@@ -149,15 +151,15 @@ object Extract extends LazyLogging {
       Seq(HyperedgeDep(mw.nodeName, deps.distinct, s))
     case p: Print =>
       val deps = (Seq(p.en) ++ p.args) flatMap findDependencesExpr
-      val uniqueName = "PRINTF" + emitExpr(p.clk) + deps.mkString("$") + Util.tidyString(p.string.serialize)
-      // FUTURE: more efficient unique name (perhaps line number?)
-      Seq(HyperedgeDep(uniqueName, deps.distinct, p))
+      Seq(HyperedgeDep(p.name, deps.distinct, p))
+    case v: Verification =>
+      val deps = Seq(v.en, v.pred).flatMap(findDependencesExpr)
+      Seq(HyperedgeDep(v.name, deps.distinct, v))
     case st: Stop =>
       val deps = findDependencesExpr(st.en)
-      val uniqueName = "STOP" + emitExpr(st.clk) + deps.mkString("$") + st.ret
-      // FUTURE: more unique name (perhaps line number?)
-      Seq(HyperedgeDep(uniqueName, deps, st))
-    case r: DefRegister => Seq(HyperedgeDep(r.name, Seq(), r))
+      Seq(HyperedgeDep(st.name, deps, st))
+    case r: DefRegister =>
+      Seq(HyperedgeDep(r.name, Seq(), r))
     case w: DefWire => Seq()
     case m: DefMemory => Seq(HyperedgeDep(m.name, Seq(), m))
     case i: WDefInstance => Seq()

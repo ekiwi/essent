@@ -41,12 +41,14 @@ class EssentEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
   //----------------------------------------------------------------------------
   def declareModule(m: Module, topName: String) {
     val registers = findInstancesOf[DefRegister](m.body)
+    val covers = findInstancesOf[Verification](m.body).filter(_.op == Formal.Cover)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap {d: DefRegister => {
       val typeStr = genCppType(d.tpe)
       val regName = d.name
       Seq(s"$typeStr $regName;")
     }}
+    val coverDecs = covers.map(c => s"uint32_t ${c.name};")
     val memDecs = memories map {m: DefMemory => {
       s"${genCppType(m.dataType)} ${m.name}[${m.depth}];"
     }}
@@ -59,12 +61,13 @@ class EssentEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(0, "")
     writeLines(0, s"typedef struct $modName {")
     writeLines(1, registerDecs)
+    writeLines(1, coverDecs)
     writeLines(1, memDecs)
     writeLines(1, m.ports flatMap emitPort(modName == topName))
     writeLines(1, moduleDecs)
     writeLines(0, "")
     writeLines(1, s"$modName() {")
-    writeLines(2, initializeVals(modName == topName)(m, registers, memories))
+    writeLines(2, initializeVals(modName == topName)(m, registers, memories, covers))
     writeLines(1, "}")
     if (modName == topName) {
       writeLines(0, "")
@@ -395,9 +398,46 @@ class EssentEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
     //   writeLines(2, "writeActToJson();")
     //   writeLines(1, "}")
     // }
+    // collect all cover statements
+    val covers = sg.stmtsOrdered().collect{ case v: Verification if v.op == Formal.Cover => v.name  }
+    writeCoverMethods(covers)
+
     writeLines(0, s"} $topName;") //closing top module dec
     writeLines(0, "")
     writeLines(0, s"#endif  // $headerGuardName")
+  }
+
+  def writeCoverMethods(names: Seq[String]): Unit = {
+    // function to reset coverage to zero
+    writeLines(1, s"void resetCoverage() {")
+    val coverResets = names.map(n => s"${n} = 0;")
+    writeLines(2, coverResets)
+    writeLines(1, s"}")
+    // function to write coverage to a file
+    writeLines(1, s"void writeCoverage(std::string filename) {")
+    val open =
+      """std::ofstream printfile;
+        |printfile.open(filename, std::ios_base::out | std::ios_base::binary);
+        |if(!printfile.is_open()) {
+        |    std::cerr << "failed to open " << filename << " for writing, cannot write coverage!" << std::endl;
+        |    return;
+        |}
+        |
+        |// write start of JSON file
+        |printfile << "[" << std::endl << "{\"class\":\"chiseltest.coverage.TestCoverage\",\"counts\":[" << std::endl;
+        |""".stripMargin.split("\n")
+    val coverCount = names.size
+    val writes = names.zipWithIndex.map{ case (n, i) =>
+      val isLast = i == coverCount - 1
+      val comma = if(isLast) "" else ","
+      s"""printfile << "{\\"${n}\\":" << ${n} << "}${comma}" << std::endl;"""
+    }
+    val close = Seq(
+      """printfile << "]}" << std::endl << "]" << std::endl;""",
+      "printfile.close();"
+    )
+    writeLines(2, open ++ writes ++ close)
+    writeLines(1, s"}")
   }
 }
 
@@ -405,6 +445,7 @@ class EssentEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
 class EssentCompiler(opt: OptFlags) {
   val readyForEssent: Seq[TransformDependency] =
     firrtl.stage.Forms.LowFormOptimized ++
+      Seq(Dependency(firrtl.transforms.EnsureNamedStatements)) ++
     Seq(
 //      Dependency(essent.passes.LegacyInvalidNodesForConds),
       Dependency(essent.passes.ReplaceAsyncRegs),

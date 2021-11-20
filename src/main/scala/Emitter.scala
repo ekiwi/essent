@@ -24,11 +24,12 @@ object Emitter {
     case _ => throw new Exception(s"No CPP type implemented for $tpe")
   }
 
-  def initializeVals(topLevel: Boolean)(m: Module, registers: Seq[DefRegister], memories: Seq[DefMemory]) = {
+  def initializeVals(topLevel: Boolean)(m: Module, registers: Seq[DefRegister], memories: Seq[DefMemory], covers: Seq[Verification]) = {
     def initVal(name: String, tpe:Type) = s"$name.rand_init();"
     val regInits = registers map {
       r: DefRegister => initVal(r.name, r.tpe)
     }
+    val coverInits = covers.map(c => s"${c.name} = 0;")
     val memInits = memories flatMap { m: DefMemory => {
       if ((m.depth > 1000) && (bitWidth(m.dataType)) <= 64) {
         Seq(s"${m.name}[0].rand_init();",
@@ -41,7 +42,7 @@ object Emitter {
       case _ => if (!topLevel) Seq()
                 else Seq(initVal(p.name, p.tpe))
     }}
-    regInits ++ memInits ++ portInits
+    regInits ++ coverInits ++ memInits ++ portInits
   }
 
 
@@ -54,6 +55,9 @@ object Emitter {
       case m: DefMemory => m.copy(name = prefix + m.name)
       case w: DefWire => w.copy(name = prefix + w.name)
       case mw: MemWrite => mw.copy(memName = prefix + mw.memName)
+      case s: Stop => s.withName(prefix + s.name)
+      case p: Print => p.withName(prefix + p.name)
+      case v: Verification => v.withName(prefix + v.name)
       case _ => s
     }
     replaced map addPrefixToNameStmt(prefix) map addPrefixToNameExpr(prefix)
@@ -235,6 +239,8 @@ object Emitter {
                         (p.args map {arg => s"${emitExprWrap(arg)}.as_single_word()"})
       Seq(s"if (UNLIKELY(done_reset && update_registers && verbose && ${emitExprWrap(p.en)})) printf(${printfArgs mkString(", ")});")
     }
+    case v: Verification if v.op == Formal.Cover =>
+      Seq(s"if (update_registers && (${emitExpr(Utils.and(v.en, v.pred))})) { ${v.name} += 1; }")
     case st: Stop => {
       Seq(s"if (UNLIKELY(${emitExpr(st.en)})) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     }
