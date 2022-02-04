@@ -16,6 +16,8 @@ libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.7"
 
 libraryDependencies += "edu.berkeley.cs" %% "firrtl" % "1.4.3"
 
+libraryDependencies += "net.openhft" % "compiler" % "2.21ea81"
+
 
 // Assembly
 

@@ -49,7 +49,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
 
     val modName = m.name
-    writeLines(0, s"class ${modName} {")
+    writeLines(0, s"public class ${modName} implements Runnable {")
     writeLines(1, registerDecs)
     writeLines(1, memDecs)
     writeLines(1, m.ports flatMap emitPort(modName == topName))
