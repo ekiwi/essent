@@ -13,3 +13,4 @@ utils/bin/essent.jar
 .idea/*
 
 GCD.java
+runner.sh

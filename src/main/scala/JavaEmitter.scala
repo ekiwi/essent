@@ -6,16 +6,19 @@ import firrtl.ir._
 import firrtl.PrimOps._
 
 object JavaEmitter {
+
+  def isBigInt(tpe: Type): Boolean = genJavaType(tpe) == "BigInteger"
+
   def genPublicJavaType(tpe: Type): String = tpe match {
-    case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInt"
-    case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInt"
+    case UIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInteger"
+    case SIntType(IntWidth(w)) => if (w == 1) "public boolean" else if (w <= 64) "public long" else "public BigInteger"
     case AsyncResetType => "public boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
 
   def genJavaType(tpe: Type): String = tpe match {
-    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInt"
-    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInt"
+    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
+    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
     case AsyncResetType => "boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
@@ -28,10 +31,10 @@ object JavaEmitter {
       val publicType = genPublicJavaType(p.tpe)
       if (p.tpe == UIntType(IntWidth(1)))
         Seq(genPublicJavaType(p.tpe) + " " + p.name + " = false;")
-      else if (publicType.contains("BigInt"))
-        Seq(genPublicJavaType(p.tpe) + " " + p.name + " = new BigInt(0);")
+      else if (publicType.contains("BigInteger"))
+        Seq(genPublicJavaType(p.tpe) + " " + p.name + " = BigInteger.valueOf(0);")
       else
-        Seq(genPublicJavaType(p.tpe) + " " + p.name + " = 0;")
+        Seq(genPublicJavaType(p.tpe) + " " + p.name + " = 0L;")
     }
   }
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
@@ -53,45 +56,112 @@ object JavaEmitter {
       val result = s"${emitExpr(w.expr)(null)}.${w.name}"
       if (rn != null) rn.emit(result)
       else result
-    case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}.as_single_word()]"
-    case p: DoPrim => p.op match {
-      case Add => p.args map emitExprWrap mkString(" + ")
-      case Addw => s"${emitExprWrap(p.args.head)}.addw(${emitExprWrap(p.args(1))})"
-      case Sub => p.args map emitExprWrap mkString(" - ")
-      case Subw => s"${emitExprWrap(p.args.head)}.subw(${emitExprWrap(p.args(1))})"
-      case Mul => p.args map emitExprWrap mkString(" * ")
-      case Div => p.args map emitExprWrap mkString(" / ")
-      case Rem => p.args map emitExprWrap mkString(" % ")
-      case Lt  => p.args map emitExprWrap mkString(" < ")
-      case Leq => p.args map emitExprWrap mkString(" <= ")
-      case Gt  => p.args map emitExprWrap mkString(" > ")
-      case Geq => p.args map emitExprWrap mkString(" >= ")
-      case Eq => p.args map emitExprWrap mkString(" == ")
-      case Neq => p.args map emitExprWrap mkString(" != ")
-      case Pad => s"${emitExprWrap(p.args.head)}.pad<${bitWidth(p.tpe)}>()"
-      case AsUInt => s"${emitExprWrap(p.args.head)}.asUInt()"
-      case AsSInt => s"${emitExprWrap(p.args.head)}.asSInt()"
-      case AsClock => throw new Exception("AsClock unimplemented!")
-      case AsAsyncReset => emitExpr(p.args.head)
-      case Shl => s"${emitExprWrap(p.args.head)}.shl<${p.consts.head.toInt}>()"
-      case Shr => s"${emitExprWrap(p.args.head)}.shr<${p.consts.head.toInt}>()"
-      case Dshl => p.args map emitExprWrap mkString(" << ")
-      case Dshlw => s"${emitExprWrap(p.args.head)}.dshlw(${emitExpr(p.args(1))})"
-      case Dshr => p.args map emitExprWrap mkString(" >> ")
-      case Cvt => s"${emitExprWrap(p.args.head)}.cvt()"
-      case Neg => s"-${emitExprWrap(p.args.head)}"
-      case Not => s"!${emitExprWrap(p.args.head)}"
-      case And => p.args map emitExprWrap mkString(" & ")
-      case Or => p.args map emitExprWrap mkString(" | ")
-      case Xor => p.args map emitExprWrap mkString(" ^ ")
-      case Andr => s"${emitExprWrap(p.args.head)}.andr()"
-      case Orr => s"${emitExprWrap(p.args.head)}.orr()"
-      case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
-      case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
-      case Bits => s"${emitExprWrap(p.args.head)}.bits<${p.consts.head.toInt},${p.consts(1).toInt}>()"
-      case Head => s"${emitExprWrap(p.args.head)}.head<${p.consts.head.toInt}>()"
-      case Tail => s"${emitExprWrap(p.args.head)} & 0xffff"
-    }
+    // case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}.as_single_word()]"
+    case p: DoPrim =>
+
+
+      // val hasBigInt = p.args.any(a => isBigInt(a.tpe))
+      var hasBigInt = false
+      for(arg<-p.args){
+        if (isBigInt(arg.tpe)){
+          hasBigInt = true
+        }
+      }
+      // check if any big int, make sure all are big ints
+      // 
+      // isBigInt(bitWp.args.head.tpe)
+
+      // p.args.head => first variable
+      // p.args(1) => second variable
+      // 
+      // if (isBigInt(p.args(1).tpe)) emitExprWrap(p.args(1)) else s"BigInteger.valueOf${emitExprWrap(p.args(1))}"
+      //    
+      // var first_param = false   
+      // try{
+      //   first_param = isBigInt(p.args(1).tpe)
+      // }
+      if(hasBigInt){
+        p.op match{
+          case Add => s"${emitExprWrap(p.args.head)}.add(${emitExprWrap(p.args(1))})"
+          case Addw => "not implemented yet"
+          case Sub => s"${emitExprWrap(p.args.head)}.subtract(${emitExprWrap(p.args(1))})"
+          case Subw => "not implemented yet"
+          case Mul => s"${emitExprWrap(p.args.head)}.multiply(${emitExprWrap(p.args(1))})"
+          case Div => s"${emitExprWrap(p.args.head)}.divide(${emitExprWrap(p.args(1))})"
+          case Rem => s"${emitExprWrap(p.args.head)}.remainder(${emitExprWrap(p.args(1))})"
+          case Lt  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == -1"
+          case Leq  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == -1 || ${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 0"
+          case Gt  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 1"
+          case Geq => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 1 || ${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 0"
+          case Eq => s"${emitExprWrap(p.args.head)}.equals(${emitExprWrap(p.args(1))})"
+          // case Eq if !first_param => s"${emitExprWrap(p.args.head)}.equals(BigInteger.valueOf(${emitExprWrap(p.args(1))}))"
+          case Neq => s"!${emitExprWrap(p.args.head)}.equals(${emitExprWrap(p.args(1))})"
+          case Pad => "not implemented yet"
+          case AsUInt => "not implemented yet"
+          case AsSInt => "not implemented yet"
+          case AsClock => throw new Exception("AsClock unimplemented!")
+          case AsAsyncReset => "not implemented yet"
+          case Shl => "not implemented yet"
+          case Shr => "not implemented yet"
+          case Dshl => s"${emitExprWrap(p.args.head)}.shiftLeft(${emitExprWrap(p.args(1))})"
+          case Dshlw => "not implemented yet"
+          case Dshr => s"${emitExprWrap(p.args.head)}.shiftRight(${emitExprWrap(p.args(1))})"
+          case Cvt => "not implemented yet"
+          case Neg => s"${emitExprWrap(p.args.head)}.negate()"
+          case Not => s"${emitExprWrap(p.args.head)}.not()"
+          case And => s"${emitExprWrap(p.args.head)}.and(${emitExprWrap(p.args(1))})"
+          case Or => s"${emitExprWrap(p.args.head)}.or(${emitExprWrap(p.args(1))})"
+          case Xor => s"${emitExprWrap(p.args.head)}.xor(${emitExprWrap(p.args(1))})"
+          case Andr => "not implemented yet"
+          case Orr => "not implemented yet"
+          case Xorr => "not implemented yet"
+          case Cat => "not implemented yet"
+          case Bits => "not implemented yet"
+          case Head => "not implemented yet"
+          case Tail => "not implemented yet"
+          case _ => "not implemented"
+        }
+      }
+      else{
+        p.op match {
+          case Add => p.args map emitExprWrap mkString(" + ") // BigInt -> old.add(BigInteger.valueOf(new))
+          case Addw => s"${emitExprWrap(p.args.head)}.addw(${emitExprWrap(p.args(1))})"
+          case Sub => p.args map emitExprWrap mkString(" - ") // BigInt -> old.subtract(BigInteger.valueOf(new))
+          case Subw => s"${emitExprWrap(p.args.head)}.subw(${emitExprWrap(p.args(1))})"
+          case Mul => p.args map emitExprWrap mkString(" * ") // BigInt -> old.multiply(BigInteger.valueOf(new))
+          case Div => p.args map emitExprWrap mkString(" / ") // BigInt -> old.divide(BigInteger.valueOf(new))
+          case Rem => p.args map emitExprWrap mkString(" % ") // BigInt -> old.remainder/mod(BigInteger.valueOf(new))
+          case Lt  => p.args map emitExprWrap mkString(" < ")
+          case Leq => p.args map emitExprWrap mkString(" <= ")
+          case Gt  => p.args map emitExprWrap mkString(" > ")
+          case Geq => p.args map emitExprWrap mkString(" >= ")
+          case Eq => p.args map emitExprWrap mkString(" == ") // BigInt -> old.equals(new))
+          case Neq => p.args map emitExprWrap mkString(" != ")
+          case Pad => s"${emitExprWrap(p.args.head)}.pad<${bitWidth(p.tpe)}>()"
+          case AsUInt => s"${emitExprWrap(p.args.head)}.asUInt()"
+          case AsSInt => s"${emitExprWrap(p.args.head)}.asSInt()"
+          case AsClock => throw new Exception("AsClock unimplemented!")
+          case AsAsyncReset => emitExpr(p.args.head)
+          case Shl => s"${emitExprWrap(p.args.head)}.shl<${p.consts.head.toInt}>()"
+          case Shr => s"${emitExprWrap(p.args.head)}.shr<${p.consts.head.toInt}>()"
+          case Dshl => p.args map emitExprWrap mkString(" << ") // old.shiftLeft(int)
+          case Dshlw => s"${emitExprWrap(p.args.head)}.dshlw(${emitExpr(p.args(1))})"
+          case Dshr => p.args map emitExprWrap mkString(" >> ") // old.shiftRight(int)
+          case Cvt => s"${emitExprWrap(p.args.head)}.cvt()"
+          case Neg => s"-${emitExprWrap(p.args.head)}" // old.negate()
+          case Not => s"!${emitExprWrap(p.args.head)}" // old.not()
+          case And => p.args map emitExprWrap mkString(" & ") // old.and(new)
+          case Or => p.args map emitExprWrap mkString(" | ") // old.or(new)
+          case Xor => p.args map emitExprWrap mkString(" ^ ") // old.xor(new)
+          case Andr => s"${emitExprWrap(p.args.head)}.andr()"
+          case Orr => s"${emitExprWrap(p.args.head)}.orr()"
+          case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
+          case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
+          case Bits => s"${emitExprWrap(p.args.head)}.bits<${p.consts.head.toInt},${p.consts(1).toInt}>()"
+          case Head => s"${emitExprWrap(p.args.head)}.head<${p.consts.head.toInt}>()"
+          case Tail => s"${emitExprWrap(p.args.head)} & 0xffff"
+        }
+      }
     case _ => throw new Exception(s"Don't yet support $e")
   }
 
