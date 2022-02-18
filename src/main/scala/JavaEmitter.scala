@@ -39,6 +39,7 @@ object JavaEmitter {
   }
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
+    // check this -> if literal is bigint
     case u: UIntLiteral =>
       val maxIn64Bits = (BigInt(1) << 64) - 1
       val width = bitWidth(u.tpe)
@@ -81,21 +82,22 @@ object JavaEmitter {
       //   first_param = isBigInt(p.args(1).tpe)
       // }
       if(hasBigInt){
+        // replace all emitExpr with emitBigIntExpr
         p.op match{
-          case Add => s"${emitExprWrap(p.args.head)}.add(${emitExprWrap(p.args(1))})"
+          case Add => s"${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))})"
           case Addw => "not implemented yet"
-          case Sub => s"${emitExprWrap(p.args.head)}.subtract(${emitExprWrap(p.args(1))})"
+          case Sub => s"${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))})"
           case Subw => "not implemented yet"
-          case Mul => s"${emitExprWrap(p.args.head)}.multiply(${emitExprWrap(p.args(1))})"
-          case Div => s"${emitExprWrap(p.args.head)}.divide(${emitExprWrap(p.args(1))})"
-          case Rem => s"${emitExprWrap(p.args.head)}.remainder(${emitExprWrap(p.args(1))})"
-          case Lt  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == -1"
-          case Leq  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == -1 || ${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 0"
-          case Gt  => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 1"
-          case Geq => s"${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 1 || ${emitExprWrap(p.args.head)}.compareTo(${emitExprWrap(p.args(1))}) == 0"
-          case Eq => s"${emitExprWrap(p.args.head)}.equals(${emitExprWrap(p.args(1))})"
+          case Mul => s"${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))})"
+          case Div => s"${emitBigIntExpr(p.args.head)}.divide(${emitBigIntExpr(p.args(1))})"
+          case Rem => s"${emitBigIntExpr(p.args.head)}.remainder(${emitBigIntExpr(p.args(1))})"
+          case Lt  => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == -1"
+          case Leq  => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == -1 || ${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
+          case Gt  => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 1"
+          case Geq => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 1 || ${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
+          case Eq => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
           // case Eq if !first_param => s"${emitExprWrap(p.args.head)}.equals(BigInteger.valueOf(${emitExprWrap(p.args(1))}))"
-          case Neq => s"!${emitExprWrap(p.args.head)}.equals(${emitExprWrap(p.args(1))})"
+          case Neq => s"!${emitBigIntExpr(p.args.head)}.equals(${emitBigIntExpr(p.args(1))})"
           case Pad => "not implemented yet"
           case AsUInt => "not implemented yet"
           case AsSInt => "not implemented yet"
@@ -103,15 +105,15 @@ object JavaEmitter {
           case AsAsyncReset => "not implemented yet"
           case Shl => "not implemented yet"
           case Shr => "not implemented yet"
-          case Dshl => s"${emitExprWrap(p.args.head)}.shiftLeft(${emitExprWrap(p.args(1))})"
+          case Dshl => s"${emitBigIntExpr(p.args.head)}.shiftLeft(${emitBigIntExpr(p.args(1))})"
           case Dshlw => "not implemented yet"
-          case Dshr => s"${emitExprWrap(p.args.head)}.shiftRight(${emitExprWrap(p.args(1))})"
+          case Dshr => s"${emitBigIntExpr(p.args.head)}.shiftRight(${emitBigIntExpr(p.args(1))})"
           case Cvt => "not implemented yet"
-          case Neg => s"${emitExprWrap(p.args.head)}.negate()"
-          case Not => s"${emitExprWrap(p.args.head)}.not()"
-          case And => s"${emitExprWrap(p.args.head)}.and(${emitExprWrap(p.args(1))})"
-          case Or => s"${emitExprWrap(p.args.head)}.or(${emitExprWrap(p.args(1))})"
-          case Xor => s"${emitExprWrap(p.args.head)}.xor(${emitExprWrap(p.args(1))})"
+          case Neg => s"${emitBigIntExpr(p.args.head)}.negate()"
+          case Not => s"${emitBigIntExpr(p.args.head)}.not()"
+          case And => s"${emitBigIntExpr(p.args.head)}.and(${emitBigIntExpr(p.args(1))})"
+          case Or => s"${emitBigIntExpr(p.args.head)}.or(${emitBigIntExpr(p.args(1))})"
+          case Xor => s"${emitBigIntExpr(p.args.head)}.xor(${emitBigIntExpr(p.args(1))})"
           case Andr => "not implemented yet"
           case Orr => "not implemented yet"
           case Xorr => "not implemented yet"
@@ -211,6 +213,15 @@ object JavaEmitter {
   def emitExprWrap(e: Expression)(implicit rn: Renamer): String = e match {
     case DoPrim(_,_,_,_) | Mux(_,_,_,_) => s"(${emitExpr(e)})"
     case _ => emitExpr(e)
+  }
+
+  def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = {
+    if(isBigInt(e.tpe)){
+      emitExprWrap(e)
+    }
+    else{
+      s"BigInteger.valueOf(${emitExprWrap(e)})"
+    }
   }
 
   def splatLargeLiteralIntoRawArray(value: BigInt, width: BigInt): String = {
