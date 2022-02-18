@@ -79,11 +79,11 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
   }
 
-  def writePeek(m: Module, topName: String) : Unit = {
+  def writePeek(m: Module, topName: String) : String = {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(d.name + ";")
+      Seq(s"""case "${d.name}": return ${d.name};""")
     }}
     // Not tested yet
     //val memDecs = memories map { m: DefMemory => {
@@ -94,11 +94,25 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val instanceName = fullName.split("\\.").last
     s"$module $instanceName;"
   }
-    writeLines(2, "switch")
+
+    def returnName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
+      case ClockType => if (!topLevel) Seq()
+      else Seq(s"""case "${p.name}": return ${p.name};""")
+      case _ => if (!topLevel) Seq()
+      else {
+        Seq(s"""case "${p.name}": return ${p.name};""")
+      }
+    }
+
+    writeLines(2, "switch(var){")
     val modName = m.name
-    writeLines(2, registerDecs)
-    writeLines(2, m.ports flatMap emitPort(modName == topName))
-    writeLines(2, moduleDecs)
+    writeLines(3, registerDecs)
+    writeLines(3, m.ports flatMap returnName(modName == topName))
+    writeLines(2, "}")
+
+    //    writeLines(2, moduleDecs)
+
+    ""
   }
 
   def writePoke(m: Module, topName: String) : Unit = {
@@ -177,8 +191,11 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "//public long peek(String var) {")
-    writeLines(1, "//}")
+    writeLines(1, "public long peek(String var) {")
+    circuit.modules foreach {
+      case m: Module => writeLines(2, writePeek(m, topName))
+    }
+    writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, "//public long poke(String var, long val) {")
     writeLines(1, "//}")

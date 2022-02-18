@@ -37,6 +37,7 @@ object JavaEmitter {
         Seq(genPublicJavaType(p.tpe) + " " + p.name + " = 0L;")
     }
   }
+
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
     // check this -> if literal is bigint
@@ -59,11 +60,9 @@ object JavaEmitter {
       else result
     // case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}.as_single_word()]"
     case p: DoPrim =>
-
-
       // val hasBigInt = p.args.any(a => isBigInt(a.tpe))
       var hasBigInt = false
-      for(arg<-p.args){
+      for (arg<-p.args) {
         if (isBigInt(arg.tpe)){
           hasBigInt = true
         }
