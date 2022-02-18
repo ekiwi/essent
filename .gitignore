@@ -12,6 +12,8 @@ utils/bin/essent.jar
 # IDE related
 .idea/*
 
+.DS_Store
+
 GCD.java
 runner.sh
 GCD.class

@@ -31,7 +31,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     lines.foreach { s => writer.write(tabs * indentLevel + s + "\n") }
   }
 
-  def declareModule(m: Module, topName: String) {
+  def declareModule(m: Module, topName: String): Unit = {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
@@ -50,7 +50,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     val modName = m.name
     writeLines(0, "import java.math.BigInteger;")
-    writeLines(0, s"class ${modName} {")
+    writeLines(0, s"public class ${modName} implements Simulator {")
     writeLines(1, registerDecs)
     writeLines(1, memDecs)
     writeLines(1, m.ports flatMap emitPort(modName == topName))
@@ -79,7 +79,53 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
   }
 
-  def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags) {
+  def writePeek(m: Module, topName: String) : Unit = {
+    val registers = findInstancesOf[DefRegister](m.body)
+    val memories = findInstancesOf[DefMemory](m.body)
+    val registerDecs = registers flatMap { d: DefRegister => {
+      Seq(d.name + ";")
+    }}
+    // Not tested yet
+    //val memDecs = memories map { m: DefMemory => {
+    //  m.name
+    //}}
+    val modulesAndPrefixes = findModuleInstances(m.body)
+    val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
+    val instanceName = fullName.split("\\.").last
+    s"$module $instanceName;"
+  }
+    writeLines(2, "switch")
+    val modName = m.name
+    writeLines(2, registerDecs)
+    writeLines(2, m.ports flatMap emitPort(modName == topName))
+    writeLines(2, moduleDecs)
+  }
+
+  def writePoke(m: Module, topName: String) : Unit = {
+    val registers = findInstancesOf[DefRegister](m.body)
+    val memories = findInstancesOf[DefMemory](m.body)
+    val registerDecs = registers flatMap { d: DefRegister => {
+    val typeStr = genPublicJavaType(d.tpe)
+    val regName = d.name
+    if (typeStr.contains("BigInt")) Seq(s"$typeStr $regName = new BigInt(0);") else Seq(s"$typeStr $regName = 0;")
+  }}
+    val memDecs = memories map { m: DefMemory => {
+    s"${genPublicJavaType(m.dataType)} ${m.name}[${m.depth}];"
+  }}
+    val modulesAndPrefixes = findModuleInstances(m.body)
+    val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
+    val instanceName = fullName.split("\\.").last
+    s"$module $instanceName;"
+  }
+
+    val modName = m.name
+    writeLines(1, registerDecs)
+    writeLines(1, memDecs)
+    writeLines(1, m.ports flatMap emitPort(modName == topName))
+    writeLines(1, moduleDecs)
+  }
+
+  def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags): Unit = {
     stmt match {
       case mw: MemWrite =>
       case _ =>
@@ -125,11 +171,20 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     writeLines(1, s"public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
     if (opt.useCondParts)
-      writeLines(0, "not implemented")
+      writeBodyInner(2, sg, opt)
     else
       writeBodyInner(2, sg, opt)
 
     writeLines(1, "}")
+    writeLines(0, "")
+    writeLines(1, "//public long peek(String var) {")
+    writeLines(1, "//}")
+    writeLines(0, "")
+    writeLines(1, "//public long poke(String var, long val) {")
+    writeLines(1, "//}")
+    writeLines(0, "")
+    writeLines(1, "//public long step() {")
+    writeLines(1, "//}")
     writeLines(0, "}")
   }
 }
@@ -150,7 +205,7 @@ class JavaCompiler(opt: OptFlags) {
         Dependency(essent.passes.ReplaceRsvdKeywords)
       )
 
-  def compileAndEmit(circuit: Circuit) {
+  def compileAndEmit(circuit: Circuit): Unit = {
     val topName = circuit.main
     val firrtlCompiler = new transforms.Compiler(readyForEssent)
     val resultState = firrtlCompiler.execute(CircuitState(circuit, Seq()))
