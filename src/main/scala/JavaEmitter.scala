@@ -9,6 +9,8 @@ object JavaEmitter {
 
   def isBigInt(tpe: Type): Boolean = genJavaType(tpe) == "BigInteger"
 
+  def isBoolean(tpe: Type): Boolean = genJavaType(tpe) == "boolean"
+
   def genJavaType(tpe: Type): String = tpe match {
     case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
     case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
@@ -93,6 +95,28 @@ object JavaEmitter {
         case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt})"
       }
     case _ => throw new Exception(s"Don't yet support $e")
+  }
+
+  def asBigInt(e: Expression)(implicit rn: Renamer) : String = {
+    if (isBigInt(e.tpe)) {
+      emitBigIntExpr(e)
+    } else if (isBoolean(e.tpe)) {
+      s"BigInteger.valueOf(${emitExpr(e)} ? 1 : 0)"
+    }
+      else {
+      s"BigInteger.valueOf(${emitExpr(e)})"
+    }
+  }
+
+  def fromBigInt(tpe: Type, value: String)(implicit rn: Renamer) : String = {
+    if (isBigInt(tpe)) {
+      value
+    } else if (isBoolean(tpe)) {
+      s"!$value.equals(BigInteger.ZERO)"
+    }
+    else {
+      s"$value.longValue()"
+    }
   }
 
   def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {

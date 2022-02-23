@@ -83,7 +83,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(s"""case "${d.name}": return ${d.name};""")
+      Seq(s"""case "${d.name}": return ${asBigInt(Reference(d))};""")
     }}
     // Not tested yet
     //val memDecs = memories map { m: DefMemory => {
@@ -104,20 +104,18 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   }
 
   def returnName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
-    case ClockType => if (!topLevel) Seq()
-    else Seq(s"""case "${p.name}": return ${p.name};""")
+    case ClockType => Seq()
     case _ => if (!topLevel) Seq()
     else {
-      Seq(s"""case "${p.name}": return ${p.name};""")
+      Seq(s"""case "${p.name}": return ${asBigInt(Reference(p))};""")
     }
   }
 
   def setName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
-    case ClockType => if (!topLevel) Seq()
-    else Seq(s"""case "${p.name}": ${p.name} = var; return;""")
+    case ClockType => Seq()
     case _ => if (!topLevel) Seq()
     else {
-      Seq(s"""case "${p.name}": ${p.name} = var; return;""")
+      Seq(s"""case "${p.name}": ${p.name} = ${fromBigInt(p.tpe, "val")}; return;""")
     }
   }
 
@@ -125,7 +123,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(s"""case "${d.name}": ${d.name} = var; return;""")
+      Seq(s"""case "${d.name}": ${d.name} = ${fromBigInt(d.tpe, "val")}; return;""")
     }}
     // Not tested yet
     //val memDecs = memories map { m: DefMemory => {
@@ -197,20 +195,20 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public long peek(String var) {")
+    writeLines(1, "public BigInteger peek(String var) {")
     circuit.modules foreach {
       case m: Module => writePeek(m, topName)
     }
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public long poke(String var, long val) {")
+    writeLines(1, "public void poke(String var, BigInteger val) {")
     circuit.modules foreach {
       case m: Module => writePoke(m, topName)
     }
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, "public void step() {")
-    writeLines(2, "eval(true, false, false)")
+    writeLines(2, "eval(true, false, false);")
     writeLines(1, "}")
     writeLines(0, "}")
   }
