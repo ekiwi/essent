@@ -2,7 +2,7 @@ circuit GCD :
   module GCD : 
     input clk : Clock
     input reset : UInt<1>
-    output io : {flip a : UInt<16>, flip b : UInt<16>, flip e : UInt<1>, z : UInt<16>, v : UInt<1>}
+    output io : {flip a : UInt<70>, flip b : UInt<70>, flip e : UInt<1>, z : UInt<70>, v : UInt<1>}
     
     io is invalid
     reg x : UInt, clk
