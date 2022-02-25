@@ -1,7 +1,9 @@
-public interface Simulator {
-    int peek(String var);
+import java.math.BigInteger;
 
-    void poke(String var, int val);
+public interface Simulator {
+    BigInteger peek(String var);
+
+    void poke(String var, BigInteger val);
 
     void step();
 }

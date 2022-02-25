@@ -15,3 +15,5 @@ utils/bin/essent.jar
 .DS_Store
 
 GCD.java
+runner.sh
+GCD.class
