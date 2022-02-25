@@ -90,9 +90,9 @@ object JavaEmitter {
         case Orr => s"${emitExprWrap(p.args.head)}.orr()"
         case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
         case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
-        case Bits => s"${emitExprWrap(p.args.head)}.bits<${p.consts.head.toInt},${p.consts(1).toInt}>()"
+        case Bits => s"${emitExprWrap(p.args.head)} & ((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt})"
         case Head => s"${emitExprWrap(p.args.head)} & (((1 << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
-        case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt} - 1)"
+        case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt})"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -165,12 +165,12 @@ object JavaEmitter {
         case And => s"${emitBigIntExpr(p.args.head)}.and(${emitBigIntExpr(p.args(1))})"
         case Or => s"${emitBigIntExpr(p.args.head)}.or(${emitBigIntExpr(p.args(1))})"
         case Xor => s"${emitBigIntExpr(p.args.head)}.xor(${emitBigIntExpr(p.args(1))})"
-        case Andr => "not implemented yet11"
-        case Orr => "not implemented yet12"
-        case Xorr => "not implemented yet13"
-        case Cat => "not implemented yet14"
-        case Bits => "not implemented yet15"
-        case Head => "not implemented yet16"
+        case Andr => "not implemented yet"
+        case Orr => "not implemented yet"
+        case Xorr => "not implemented yet"
+        case Cat => "not implemented yet"
+        case Bits => s"${emitExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
+        case Head => "not implemented yet"
         case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}))"
         case _ => "not implemented"
       }
