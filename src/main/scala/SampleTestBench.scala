@@ -1,4 +1,4 @@
-import java.math.BigInteger
+import essent.Driver
 
 /**
  * This is a sample testbench that someone would write
@@ -7,7 +7,8 @@ import java.math.BigInteger
 
 object SampleTestBench {
   def main(args : Array[String]): Unit = {
-    val sim = new SimulatorWrapper(JavaRuntimeCompiler.compile(args(0)))
+    Driver.main(Array("-O0", "-java", args(0)))
+    val sim = new SimulatorWrapper(JavaRuntimeCompiler.compile(args(0).split('.')(0) + ".java"))
     sim.poke("io_a", 6)
     sim.poke("io_b", 9)
     sim.poke("io_e", 1)
