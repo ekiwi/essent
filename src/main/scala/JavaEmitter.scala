@@ -58,9 +58,9 @@ object JavaEmitter {
       }
       p.op match {
         case Add => p.args map emitExprWrap mkString(" + ")
-        case Addw => s"${emitExprWrap(p.args.head)}.addw(${emitExprWrap(p.args(1))})"
+        case Addw => p.args map emitExprWrap mkString(" + ")
         case Sub => p.args map emitExprWrap mkString(" - ")
-        case Subw => s"${emitExprWrap(p.args.head)}.subw(${emitExprWrap(p.args(1))})"
+        case Subw => p.args map emitExprWrap mkString(" - ")
         case Mul => p.args map emitExprWrap mkString(" * ")
         case Div => p.args map emitExprWrap mkString(" / ")
         case Rem => p.args map emitExprWrap mkString(" % ")
@@ -91,8 +91,8 @@ object JavaEmitter {
         case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
         case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
         case Bits => s"${emitExprWrap(p.args.head)}.bits<${p.consts.head.toInt},${p.consts(1).toInt}>()"
-        case Head => s"${emitExprWrap(p.args.head)}.head<${p.consts.head.toInt}>()"
-        case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt})"
+        case Head => s"${emitExprWrap(p.args.head)} & (((1 << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
+        case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt} - 1)"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -137,9 +137,9 @@ object JavaEmitter {
     case p: DoPrim =>
       p.op match {
         case Add => s"${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))})"
-        case Addw => "not implemented yet"
+        case Addw => "not implemented yet1"
         case Sub => s"${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))})"
-        case Subw => "not implemented yet"
+        case Subw => "not implemented yet2"
         case Mul => s"${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))})"
         case Div => s"${emitBigIntExpr(p.args.head)}.divide(${emitBigIntExpr(p.args(1))})"
         case Rem => s"${emitBigIntExpr(p.args.head)}.remainder(${emitBigIntExpr(p.args(1))})"
@@ -149,28 +149,28 @@ object JavaEmitter {
         case Geq => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 1 || ${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
         case Eq => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
         case Neq => s"!${emitBigIntExpr(p.args.head)}.equals(${emitBigIntExpr(p.args(1))})"
-        case Pad => "not implemented yet"
-        case AsUInt => "not implemented yet"
-        case AsSInt => "not implemented yet"
+        case Pad => "not implemented yet3"
+        case AsUInt => "not implemented yet4"
+        case AsSInt => "not implemented yet5"
         case AsClock => throw new Exception("AsClock unimplemented!")
-        case AsAsyncReset => "not implemented yet"
-        case Shl => "not implemented yet"
-        case Shr => "not implemented yet"
+        case AsAsyncReset => "not implemented yet6"
+        case Shl => "not implemented yet7"
+        case Shr => "not implemented yet8"
         case Dshl => s"${emitBigIntExpr(p.args.head)}.shiftLeft(${emitBigIntExpr(p.args(1))})"
-        case Dshlw => "not implemented yet"
+        case Dshlw => "not implemented yet9"
         case Dshr => s"${emitBigIntExpr(p.args.head)}.shiftRight(${emitBigIntExpr(p.args(1))})"
-        case Cvt => "not implemented yet"
+        case Cvt => "not implemented yet10"
         case Neg => s"${emitBigIntExpr(p.args.head)}.negate()"
         case Not => s"${emitBigIntExpr(p.args.head)}.not()"
         case And => s"${emitBigIntExpr(p.args.head)}.and(${emitBigIntExpr(p.args(1))})"
         case Or => s"${emitBigIntExpr(p.args.head)}.or(${emitBigIntExpr(p.args(1))})"
         case Xor => s"${emitBigIntExpr(p.args.head)}.xor(${emitBigIntExpr(p.args(1))})"
-        case Andr => "not implemented yet"
-        case Orr => "not implemented yet"
-        case Xorr => "not implemented yet"
-        case Cat => "not implemented yet"
-        case Bits => "not implemented yet"
-        case Head => "not implemented yet"
+        case Andr => "not implemented yet11"
+        case Orr => "not implemented yet12"
+        case Xorr => "not implemented yet13"
+        case Cat => "not implemented yet14"
+        case Bits => "not implemented yet15"
+        case Head => "not implemented yet16"
         case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}))"
         case _ => "not implemented"
       }

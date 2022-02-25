@@ -8,7 +8,7 @@ import essent.Driver
 object SampleTestBench {
   def main(args : Array[String]): Unit = {
     Driver.main(Array("-O0", "-java", args(0)))
-    val sim = new SimulatorWrapper(JavaRuntimeCompiler.compile(args(0).split('.')(0) + ".java"))
+    val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(args(0).split('.')(0) + ".java"))
     sim.poke("io_a", 6)
     sim.poke("io_b", 9)
     sim.poke("io_e", 1)
