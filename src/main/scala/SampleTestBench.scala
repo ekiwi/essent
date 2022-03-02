@@ -9,16 +9,20 @@ object SampleTestBench {
   def main(args : Array[String]): Unit = {
     Driver.main(Array("-O0", "-java", args(0)))
     val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(args(0).split('.')(0) + ".java"))
+    println("loading registers with io_a = 6 and io_b = 9")
+    println("")
+    sim.poke("io_e", 1)
     sim.poke("io_a", 6)
     sim.poke("io_b", 9)
-    sim.poke("io_e", 1)
-    sim.step()
+    sim.step(true)
     sim.poke("io_e", 0)
+    sim.step(false)
     for (i <- 0 to 4) {
-      println(s"i is ${i}")
+      println(s"iteration ${i}:")
       println(s"x is ${sim.peek("x")}, y is ${sim.peek("y")}")
       println(s"io_v is ${sim.peek("io_v")}")
-      sim.step()
+      println("")
+      sim.step(true)
     }
   }
 }
@@ -28,5 +32,5 @@ class SimulatorWrapper(sim : Simulator) {
 
   def poke(signal: String, value: BigInt): Unit = sim.poke(signal, value.bigInteger)
 
-  def step(): Unit = sim.step()
+  def step(update_registers: Boolean): Unit = sim.step(update_registers)
 }

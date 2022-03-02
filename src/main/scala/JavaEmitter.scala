@@ -92,7 +92,7 @@ object JavaEmitter {
         case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
         case Bits => s"${emitExprWrap(p.args.head)} & ((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt})"
         case Head => s"${emitExprWrap(p.args.head)} & (((1 << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
-        case Tail => s"${emitExprWrap(p.args.head)} & (1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt})"
+        case Tail => s"${emitExprWrap(p.args.head)} & ((1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -171,7 +171,7 @@ object JavaEmitter {
         case Cat => "not implemented yet"
         case Bits => s"${emitExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}))"
+        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
         case _ => "not implemented"
       }
   }

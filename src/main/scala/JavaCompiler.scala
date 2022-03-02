@@ -98,7 +98,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val modName = m.name
     writeLines(3, registerDecs)
     writeLines(3, m.ports flatMap returnName(modName == topName))
-    writeLines(3, "case default: return null;")
+    writeLines(3, "default: return null;")
     writeLines(2, "}")
 
     //    writeLines(2, moduleDecs)
@@ -208,8 +208,8 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public void step() {")
-    writeLines(2, "eval(true, false, false);")
+    writeLines(1, "public void step(boolean update_registers) {")
+    writeLines(2, "eval(update_registers, false, false);")
     writeLines(1, "}")
     writeLines(0, "}")
   }

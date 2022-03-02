@@ -4,19 +4,24 @@ import org.scalatest.freespec.AnyFreeSpec
 // sbt "testOnly *GCDTest"
 class GCDTest extends AnyFreeSpec{
   // sbt "testOnly *GCDTest -- -z testZero"
-  "testZero" in {
-    Driver.main(Array("-O0", "-java", "/Users/haku/essent/examples/GCD.fir"))
-    val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile("/Users/haku/essent/examples/GCD.java"))
-    sim.poke("io_a", 6)
-    sim.poke("io_b", 9)
+  def testBehavior(sim : SimulatorWrapper, a : Int, b : Int, gcd : Int) : Unit = {
     sim.poke("io_e", 1)
-    sim.step()
+    sim.poke("io_a", a)
+    sim.poke("io_b", b)
+    sim.step(true)
     sim.poke("io_e", 0)
-    for (i <- 0 to 4) {
-      println(s"i is ${i}")
-      println(s"x is ${sim.peek("x")}, y is ${sim.peek("y")}")
-      println(s"io_v is ${sim.peek("io_v")}")
-      sim.step()
+    sim.step(false)
+    while (sim.peek("io_v") == 0) {
+      sim.step(true)
     }
+    assert(sim.peek("x") == gcd)
+    assert(sim.peek("y") == 0)
+  }
+
+  "smallNumbers" in {
+    Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/GCD.fir"))
+    val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
+    testBehavior(sim, 9, 6, 3)
+    testBehavior(sim, 4, 12, 4)
   }
 }

@@ -5,5 +5,5 @@ public interface Simulator {
 
     void poke(String var, BigInteger val);
 
-    void step();
+    void step(boolean update_registers);
 }
