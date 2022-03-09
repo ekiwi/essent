@@ -44,8 +44,8 @@ class GCDTest extends AnyFreeSpec{
     sim.poke("output_ready", 1)
     while (sim.peek("output_valid") == 0) {
       sim.step(true)
+      println(sim.peek("output_bits_value1"))
+      println(sim.peek("output_bits_value2"))
     }
-    println(sim.peek("output_bits_value1"))
-    println(sim.peek("output_bits_value2"))
   }
 }
