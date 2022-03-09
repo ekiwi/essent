@@ -28,8 +28,9 @@ object JavaEmitter {
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = false;")
       else if (publicType.contains("BigInteger"))
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = BigInteger.valueOf(0);")
-      else
+      else {
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = 0L;")
+      }
     }
   }
 
@@ -39,7 +40,9 @@ object JavaEmitter {
       val maxIn64Bits = (BigInt(1) << 64) - 1
       val width = bitWidth(u.tpe)
       val asDecStr = u.value.toString(10)
-      if ((width <= 64) || (u.value <= maxIn64Bits)) s"$asDecStr" else emitBigIntExpr(e)
+      if (width == 1) s"${u.value == 1}"
+      else if ((width <= 64) || (u.value <= maxIn64Bits)) s"$asDecStr"
+      else emitBigIntExpr(e)
     case u: SIntLiteral =>
       val width = bitWidth(u.tpe)
       if ((width <= 64)) s"${u.value.toString(10)}" else emitBigIntExpr(e)

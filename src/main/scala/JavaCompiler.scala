@@ -37,7 +37,9 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val registerDecs = registers flatMap { d: DefRegister => {
       val typeStr = "public " + genJavaType(d.tpe)
       val regName = d.name
-      if (typeStr.contains("BigInteger")) Seq(s"$typeStr $regName = BigInteger.valueOf(0);") else Seq(s"$typeStr $regName = 0L;")
+      if (typeStr.contains("BigInteger")) Seq(s"$typeStr $regName = BigInteger.valueOf(0);")
+      else if (typeStr.contains("boolean")) Seq(s"$typeStr $regName = false;")
+      else Seq(s"$typeStr $regName = 0L;")
     }}
     val memDecs = memories map { m: DefMemory => {
       s"public ${genJavaType(m.dataType)} ${m.name}[${m.depth}];"
