@@ -19,11 +19,11 @@ class DecoupledGcdTest extends AnyFreeSpec{
 
     
 
-    val targetDir = TargetDirAnnotation(System.getProperty("user.dir") + "/examples")
+   // val targetDir = TargetDirAnnotation(System.getProperty("user.dir") + "/examples")
 
-    val (highFirrtl, _) = Compiler.elaborate(() => new DecoupledGcd(bitWidth = 60), Seq(targetDir))
-    val lowFirrtl = Compiler.toLowFirrtl(highFirrtl)
-    println(s"Compiled ${lowFirrtl.circuit.main}")
+    ///val (highFirrtl, _) = Compiler.elaborate(() => new DecoupledGcd(bitWidth = 60), Seq(targetDir))
+    //val lowFirrtl = Compiler.toLowFirrtl(highFirrtl)
+    //println(s"Compiled ${lowFirrtl.circuit.main}")
     // val dut = sim.createContext(lowFirrtl)
 
     // val repetitions = 6
@@ -40,6 +40,6 @@ class DecoupledGcdTest extends AnyFreeSpec{
     // println(t.report())
     // println(s"$cycles cycles")
 
-    Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/GCD.fir"))
-    val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
+    //Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/GCD.fir"))
+    //val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
 }
