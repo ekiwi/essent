@@ -18,6 +18,10 @@ libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.7"
 
 libraryDependencies += "edu.berkeley.cs" %% "firrtl" % "1.4.3"
 
+libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "0.5.0"
+
+libraryDependencies += "edu.berkeley.cs" %% "treadle" % "1.1-SNAPSHOT"
+
 // Assembly
 
 assemblyJarName in assembly := "essent.jar"

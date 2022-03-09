@@ -2,6 +2,7 @@ package disabled
 
 import firrtl._
 import firrtl.ir._
+import logger._
 
 import essent.Util
 import essent.Extract._
@@ -15,7 +16,7 @@ import scala.sys.process._
 import java.io.{File, FileWriter}
 
 
-class Graph {
+class Graph extends LazyLogging{
 
   // Internal data structures
   //----------------------------------------------------------------------------
