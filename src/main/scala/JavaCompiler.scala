@@ -5,7 +5,6 @@ import java.io.{File, FileWriter, Writer}
 import essent.JavaEmitter._
 import essent.Extract._
 import essent.ir._
-import essent.Util._
 import firrtl._
 import firrtl.ir._
 import firrtl.options.Dependency
@@ -52,7 +51,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     val modName = m.name
     writeLines(0, "import java.math.BigInteger;")
-    writeLines(0, s"public class ${modName} implements Simulator {")
+    writeLines(0, s"public class $modName implements Simulator {")
     writeLines(1, registerDecs)
     writeLines(1, memDecs)
     writeLines(1, m.ports flatMap emitPort(modName == topName))
@@ -152,7 +151,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       case _ =>
         val resultName = findResultName(stmt)
         resultName match {
-          case Some(name) => {
+          case Some(name) =>
             val cleanName = name.replace('.', '$')
             writeLines(indentLevel, s"$sigTrackName[${sigNameToID(name)}] += $name != old::$cleanName ? 1 : 0;")
             if (opt.trackExts) {
@@ -165,7 +164,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
                 writeLines(indentLevel, s"$sigExtName[${sigNameToID(name)}] += !$sigActName[${sigNameToID(name)}] && ($anyDepActive) ? 1 : 0;")
             }
             writeLines(indentLevel, s"old::$cleanName = $name;")
-          }
           case None =>
         }
     }

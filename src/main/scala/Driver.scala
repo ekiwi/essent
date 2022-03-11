@@ -6,14 +6,14 @@ import logger._
 
 
 object Driver {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     (new ArgsParser).getConfig(args) match {
       case Some(config) => generate(config)
       case None =>
     }
   }
 
-  def generate(opt: OptFlags) {
+  def generate(opt: OptFlags): Unit = {
     Logger.setClassLogLevels(Map("essent" -> logger.LogLevel(opt.essentLogLevel)))
     Logger.setClassLogLevels(Map("firrtl" -> logger.LogLevel(opt.firrtlLogLevel)))
     val sourceReader = Source.fromFile(opt.firInputFile)

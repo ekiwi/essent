@@ -45,7 +45,7 @@ object JavaEmitter {
       else emitBigIntExpr(e)
     case u: SIntLiteral =>
       val width = bitWidth(u.tpe)
-      if ((width <= 64)) s"${u.value.toString(10)}" else emitBigIntExpr(e)
+      if (width <= 64) s"${u.value.toString(10)}" else emitBigIntExpr(e)
     case m: Mux =>
       val condName = emitExprWrap(m.cond)
       val tvalName = emitExprWrap(m.tval)
@@ -60,19 +60,19 @@ object JavaEmitter {
         if (isBigInt(arg.tpe)) return emitBigIntExpr(e)
       }
       p.op match {
-        case Add => p.args map emitExprWrap mkString(" + ")
-        case Addw => p.args map emitExprWrap mkString(" + ")
-        case Sub => p.args map emitExprWrap mkString(" - ")
-        case Subw => p.args map emitExprWrap mkString(" - ")
-        case Mul => p.args map emitExprWrap mkString(" * ")
-        case Div => p.args map emitExprWrap mkString(" / ")
-        case Rem => p.args map emitExprWrap mkString(" % ")
-        case Lt  => p.args map emitExprWrap mkString(" < ")
-        case Leq => p.args map emitExprWrap mkString(" <= ")
-        case Gt  => p.args map emitExprWrap mkString(" > ")
-        case Geq => p.args map emitExprWrap mkString(" >= ")
-        case Eq => p.args map emitExprWrap mkString(" == ")
-        case Neq => p.args map emitExprWrap mkString(" != ")
+        case Add => p.args map emitExprWrap mkString " + "
+        case Addw => p.args map emitExprWrap mkString " + "
+        case Sub => p.args map emitExprWrap mkString " - "
+        case Subw => p.args map emitExprWrap mkString " - "
+        case Mul => p.args map emitExprWrap mkString " * "
+        case Div => p.args map emitExprWrap mkString " / "
+        case Rem => p.args map emitExprWrap mkString " % "
+        case Lt  => p.args map emitExprWrap mkString " < "
+        case Leq => p.args map emitExprWrap mkString " <= "
+        case Gt  => p.args map emitExprWrap mkString " > "
+        case Geq => p.args map emitExprWrap mkString " >= "
+        case Eq => p.args map emitExprWrap mkString " == "
+        case Neq => p.args map emitExprWrap mkString " != "
         case Pad => s"${emitExprWrap(p.args.head)}.pad<${bitWidth(p.tpe)}>()"
         case AsUInt => s"${emitExprWrap(p.args.head)}.asUInt()"
         case AsSInt => s"${emitExprWrap(p.args.head)}.asSInt()"
@@ -80,22 +80,22 @@ object JavaEmitter {
         case AsAsyncReset => emitExpr(p.args.head)
         case Shl => s"${emitExprWrap(p.args.head)}.shl<${p.consts.head.toInt}>()"
         case Shr => s"${emitExprWrap(p.args.head)}.shr<${p.consts.head.toInt}>()"
-        case Dshl => p.args map emitExprWrap mkString(" << ")
+        case Dshl => p.args map emitExprWrap mkString " << "
         case Dshlw => s"${emitExprWrap(p.args.head)}.dshlw(${emitExpr(p.args(1))})"
-        case Dshr => p.args map emitExprWrap mkString(" >> ")
+        case Dshr => p.args map emitExprWrap mkString " >> "
         case Cvt => s"${emitExprWrap(p.args.head)}.cvt()"
         case Neg => s"-${emitExprWrap(p.args.head)}"
         case Not => s"!${emitExprWrap(p.args.head)}"
-        case And => p.args map emitExprWrap mkString(" & ")
-        case Or => p.args map emitExprWrap mkString(" | ")
-        case Xor => p.args map emitExprWrap mkString(" ^ ")
+        case And => p.args map emitExprWrap mkString " & "
+        case Or => p.args map emitExprWrap mkString " | "
+        case Xor => p.args map emitExprWrap mkString " ^ "
         case Andr => s"${emitExprWrap(p.args.head)}.andr()"
         case Orr => s"${emitExprWrap(p.args.head)}.orr()"
         case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
         case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
-        case Bits => s"${emitExprWrap(p.args.head)} & ((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt})"
-        case Head => s"${emitExprWrap(p.args.head)} & (((1 << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
-        case Tail => s"${emitExprWrap(p.args.head)} & ((1 << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
+        case Bits => s"${emitExprWrap(p.args.head)} & ((1L << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1L << ${p.consts(1).toInt})"
+        case Head => s"${emitExprWrap(p.args.head)} & (((1L << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
+        case Tail => s"${emitExprWrap(p.args.head)} & ((1L << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -198,10 +198,10 @@ object JavaEmitter {
       val replacements = formatters zip argWidths map { case(format, width) =>
         if (format == "%h" || format == "%x") {
           val printWidth = math.ceil(width.toDouble/4).toInt
-          (format, s"""%0${printWidth}" PRIx64 """")
+          (format, s"""%0$printWidth" PRIx64 """")
         } else {
-          val printWidth = math.ceil(math.log10((1l<<width.toInt).toDouble)).toInt
-          (format, s"""%${printWidth}" PRIu64 """")
+          val printWidth = math.ceil(math.log10((1L<<width.toInt).toDouble)).toInt
+          (format, s"""%$printWidth" PRIu64 """")
         }
       }
       val formatString = replacements.foldLeft(p.string.serialize){
@@ -209,7 +209,7 @@ object JavaEmitter {
       }
       val printfArgs = Seq(s""""$formatString"""") ++
         (p.args map {arg => s"${emitExprWrap(arg)}.as_single_word()"})
-      Seq(s"if (UNLIKELY(done_reset && update_registers && verbose && ${emitExprWrap(p.en)})) printf(${printfArgs mkString(", ")});")
+      Seq(s"if (UNLIKELY(done_reset && update_registers && verbose && ${emitExprWrap(p.en)})) printf(${printfArgs mkString ", "});")
     case st: Stop =>
       Seq(s"if (UNLIKELY(${emitExpr(st.en)})) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
