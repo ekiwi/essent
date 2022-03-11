@@ -1,5 +1,8 @@
+import chiseltest.simulator.SimulatorContext
 import essent.Driver
+import firrtl.stage.{FirrtlFileAnnotation, FirrtlSourceAnnotation}
 import org.scalatest.freespec.AnyFreeSpec
+import treadle.{TreadleTester, WriteVcdAnnotation}
 
 class DecoupledTest extends AnyFreeSpec {
   private def computeGcd(a: BigInt, b: BigInt): BigInt = a.gcd(b)
@@ -24,17 +27,46 @@ class DecoupledTest extends AnyFreeSpec {
         dut.step(true)
         cycles += 1
       }
-      assert(dut.peek("output_bits_gcd") == expected)
-      assert(dut.peek("output_valid") == 1)
+      //assert(dut.peek("output_bits_gcd") == expected)
+      //assert(dut.peek("output_valid") == 1)
+    }
+
+    cycles
+  }
+
+
+  private def runTest2(dut: TreadleTester, testValues: Iterable[(BigInt, BigInt, BigInt)]): Long = {
+    var cycles = 0L
+    dut.poke("reset", 1)
+    dut.step(2)
+    cycles += 2
+    dut.poke("reset", 0)
+
+    dut.poke("output_ready", 1)
+    for((i, j, expected) <- testValues) {
+      dut.poke("input_bits_value1", i)
+      dut.poke("input_bits_value2", j)
+      dut.poke("input_valid", 1)
+      dut.step(1)
+      cycles += 1
+
+      while(dut.peek("output_valid") == 0) {
+        dut.step(1)
+        cycles += 1
+      }
+      //assert(dut.peek("output_bits_gcd") == expected)
+      //assert(dut.peek("output_valid") == 1)
     }
 
     cycles
   }
 
   "decoupled" in {
+    val startTimeCompile = System.nanoTime
     Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"))
     val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
-
+    val endTimeCompile = System.nanoTime
+    println(s"${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
     val repetitions = 6
     val numMax = 200
     val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y), computeGcd(x, y))
@@ -46,5 +78,24 @@ class DecoupledTest extends AnyFreeSpec {
     val endTime = System.nanoTime
     println(s"${(endTime - startTime)/1000000} milliseconds")
     println(s"$cycles cycles")
+  }
+
+  "decoupledTreadle" in {
+    val startTimeCompile = System.nanoTime
+    val dut = TreadleTester(Seq(FirrtlFileAnnotation(System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"), WriteVcdAnnotation))
+    val endTimeCompile = System.nanoTime
+    println(s"${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
+    val repetitions = 6
+    val numMax = 200
+    val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y), computeGcd(x, y))
+    var cycles = 0L
+    val startTime = System.nanoTime
+    (0 until repetitions).foreach { _ =>
+      cycles += runTest2(dut, testValues)
+    }
+    val endTime = System.nanoTime
+    println(s"${(endTime - startTime)/1000000} milliseconds")
+    println(s"$cycles cycles")
+    dut.finish
   }
 }
