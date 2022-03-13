@@ -1,9 +1,11 @@
+package essent;
+
 import java.math.BigInteger;
 
-public interface Simulator {
-    BigInteger peek(String var);
+public abstract class Simulator {
+    abstract public BigInteger peek(String var);
 
-    void poke(String var, BigInteger val);
+    abstract public void poke(String var, BigInteger val);
 
-    void step(boolean update_registers);
+    abstract public void step(boolean update_registers);
 }

@@ -54,7 +54,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
 
     if (m.name == topName) {
-      writeLines(0, s"public class ${m.name} implements Simulator {")
+      writeLines(0, s"public class ${m.name} extends Simulator {")
       writeLines(1, registerDecs)
       writeLines(1, memDecs)
       writeLines(1, m.ports flatMap emitPort(topLevel = true))
@@ -192,6 +192,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
 
     writeLines(0, "import java.math.BigInteger;")
+    writeLines(0, "import essent.Simulator;")
     writeLines(0, "")
 
     circuit.modules foreach {
@@ -202,19 +203,19 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeBodyInner(2, sg, opt)
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public BigInteger peek(String var) {")
+    writeLines(1, " @Override public BigInteger peek(String var) {")
     circuit.modules foreach {
       case m: Module => writePeek(m, topName)
     }
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public void poke(String var, BigInteger val) {")
+    writeLines(1, " @Override public void poke(String var, BigInteger val) {")
     circuit.modules foreach {
       case m: Module => writePoke(m, topName)
     }
     writeLines(1, "}")
     writeLines(0, "")
-    writeLines(1, "public void step(boolean update_registers) {")
+    writeLines(1, "@Override public void step(boolean update_registers) {")
     writeLines(2, "eval(update_registers, false, false);")
     writeLines(1, "}")
     writeLines(0, "}")

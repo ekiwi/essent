@@ -1,3 +1,5 @@
+package essent
+
 import java.io.{BufferedReader, FileInputStream, InputStreamReader}
 import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets

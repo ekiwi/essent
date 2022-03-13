@@ -1,5 +1,5 @@
 import chiseltest.simulator.SimulatorContext
-import essent.Driver
+import essent.{Driver, SimulatorWrapper, JavaRuntimeCompiler}
 import firrtl.stage.FirrtlFileAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import treadle.{TreadleTester, WriteVcdAnnotation}

@@ -1,4 +1,4 @@
-import essent.Driver
+import essent.{Driver, JavaRuntimeCompiler, SimulatorWrapper}
 import org.scalatest.freespec.AnyFreeSpec
 
 // sbt "testOnly *GCDTest"
