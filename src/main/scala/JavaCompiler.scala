@@ -48,14 +48,33 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       val instanceName = fullName.split("\\.").last
       s"$module $instanceName;"
     }
+    val moduleDecs2 = modulesAndPrefixes map { case (module, fullName) =>
+      val instanceName = fullName.split("\\.").last
+      s"$instanceName = new $module();"
+    }
 
-    val modName = m.name
-    writeLines(0, "import java.math.BigInteger;")
-    writeLines(0, s"public class $modName implements Simulator {")
-    writeLines(1, registerDecs)
-    writeLines(1, memDecs)
-    writeLines(1, m.ports flatMap emitPort(modName == topName))
-    writeLines(1, moduleDecs)
+    if (m.name == topName) {
+      writeLines(0, s"public class ${m.name} implements Simulator {")
+      writeLines(1, registerDecs)
+      writeLines(1, memDecs)
+      writeLines(1, m.ports flatMap emitPort(topLevel = true))
+      writeLines(1, moduleDecs)
+      writeLines(1, s"public ${m.name}() {")
+      writeLines(2, moduleDecs2)
+      writeLines(1, "}")
+    }
+    else {
+      writeLines(0, s"class ${m.name} {")
+      writeLines(1, registerDecs)
+      writeLines(1, memDecs)
+      writeLines(1, m.ports flatMap emitPort(topLevel = false))
+      writeLines(1, moduleDecs)
+      writeLines(1, s"public ${m.name}() {")
+      writeLines(2, moduleDecs2)
+      writeLines(1, "}")
+      writeLines(0, "}")
+      writeLines(0, "")
+    }
   }
 
   def writeBodyInner(indentLevel: Int, sg: StatementGraph, opt: OptFlags,
@@ -81,15 +100,11 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   }
 
   def writePeek(m: Module, topName: String) : Unit = {
+    if (m.name != topName) return
     val registers = findInstancesOf[DefRegister](m.body)
-    val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
       Seq(s"""case "${d.name}": return ${asBigInt(Reference(d))};""")
     }}
-    // Not tested yet
-    //val memDecs = memories map { m: DefMemory => {
-    //  m.name
-    //}}
     val modulesAndPrefixes = findModuleInstances(m.body)
     val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
     val instanceName = fullName.split("\\.").last
@@ -101,8 +116,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(3, m.ports flatMap returnName(modName == topName))
     writeLines(3, "default: return null;")
     writeLines(2, "}")
-
-    //    writeLines(2, moduleDecs)
   }
 
   def returnName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
@@ -122,15 +135,11 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   }
 
   def writePoke(m: Module, topName: String) : Unit = {
+    if (m.name != topName) return
     val registers = findInstancesOf[DefRegister](m.body)
-    val memories = findInstancesOf[DefMemory](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
       Seq(s"""case "${d.name}": ${d.name} = ${fromBigInt(d.tpe, "val")}; return;""")
     }}
-    // Not tested yet
-    //val memDecs = memories map { m: DefMemory => {
-    //  m.name
-    //}}
     val modulesAndPrefixes = findModuleInstances(m.body)
     val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
       val instanceName = fullName.split("\\.").last
@@ -141,8 +150,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(3, registerDecs)
     writeLines(3, m.ports flatMap setName(modName == topName))
     writeLines(2, "}")
-
-    //    writeLines(2, moduleDecs)
   }
 
   def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags): Unit = {
@@ -184,16 +191,15 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
         OptElideRegUpdates(sg)
     }
 
+    writeLines(0, "import java.math.BigInteger;")
+    writeLines(0, "")
+
     circuit.modules foreach {
       case m: Module => declareModule(m, topName)
     }
 
     writeLines(1, s"public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
-    if (opt.useCondParts)
-      writeBodyInner(2, sg, opt)
-    else
-      writeBodyInner(2, sg, opt)
-
+    writeBodyInner(2, sg, opt)
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, "public BigInteger peek(String var) {")
