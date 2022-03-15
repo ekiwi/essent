@@ -2,29 +2,29 @@ circuit DecoupledGCD :
   module DecoupledGCD :
     input clock : Clock
     input reset : UInt<1>
-    input input : { flip ready : UInt<1>, valid : UInt<1>, bits : { value1 : UInt<32>, value2 : UInt<32>}}
-    output output : { flip ready : UInt<1>, valid : UInt<1>, bits : { value1 : UInt<32>, value2 : UInt<32>, gcd : UInt<32>}}
+    input input : { flip ready : UInt<1>, valid : UInt<1>, bits : { value1 : UInt<60>, value2 : UInt<60>}}
+    output output : { flip ready : UInt<1>, valid : UInt<1>, bits : { value1 : UInt<60>, value2 : UInt<60>, gcd : UInt<60>}}
 
-    reg xInitial : UInt<32>, clock with :
+    reg xInitial : UInt<60>, clock with :
       reset => (UInt<1>("h0"), xInitial) @[main.scala 27:24]
-    reg yInitial : UInt<32>, clock with :
+    reg yInitial : UInt<60>, clock with :
       reset => (UInt<1>("h0"), yInitial) @[main.scala 28:24]
-    reg x : UInt<32>, clock with :
+    reg x : UInt<60>, clock with :
       reset => (UInt<1>("h0"), x) @[main.scala 29:24]
-    reg y : UInt<32>, clock with :
+    reg y : UInt<60>, clock with :
       reset => (UInt<1>("h0"), y) @[main.scala 30:24]
     reg busy : UInt<1>, clock with :
       reset => (reset, UInt<1>("h0")) @[main.scala 31:28]
     reg resultValid : UInt<1>, clock with :
-      reset => (reset, UInt<1>("h0")) @[main.scala 32:28]
+      reset => (reset, UInt<1>("h0")) @[main.scala 60:28]
     node _input_ready_T = eq(busy, UInt<1>("h0")) @[main.scala 34:18]
     input.ready <= _input_ready_T @[main.scala 34:15]
     output.valid <= resultValid @[main.scala 35:16]
     output.bits.gcd is invalid @[main.scala 36:15]
     output.bits.value2 is invalid @[main.scala 36:15]
     output.bits.value1 is invalid @[main.scala 36:15]
-    reg cycle : UInt<32>, clock with :
-      reset => (reset, UInt<32>("h0")) @[main.scala 38:22]
+    reg cycle : UInt<60>, clock with :
+      reset => (reset, UInt<60>("h0")) @[main.scala 38:22]
     node _cycle_T = add(cycle, UInt<1>("h1")) @[main.scala 39:18]
     node _cycle_T_1 = tail(_cycle_T, 1) @[main.scala 39:18]
     cycle <= _cycle_T_1 @[main.scala 39:9]
