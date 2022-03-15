@@ -86,9 +86,9 @@ object JavaEmitter {
       }
       val printfArgs = Seq(s""""$formatString"""") ++
         (p.args map {arg => s"${emitExprWrap(arg)}.as_single_word()"})
-      Seq(s"if (UNLIKELY(done_reset && update_registers && verbose && ${emitExprWrap(p.en)})) printf(${printfArgs mkString ", "});")
+      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) printf(${printfArgs mkString ", "});")
     case st: Stop =>
-      Seq(s"if (UNLIKELY(${emitExpr(st.en)})) {assert_triggered = true; assert_exit_code = ${st.ret};}")
+      Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
       Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[${emitExprWrap(mw.wrAddr)}.as_single_word()] = ${emitExpr(mw.wrData)};")
     case ru: RegUpdate => Seq(s"if (update_registers) ${emitExpr(ru.regRef)} = ${emitExpr(ru.expr)};")
@@ -120,6 +120,7 @@ object JavaEmitter {
       val result = s"${emitExpr(w.expr)(null)}.${w.name}"
       if (rn != null) rn.emit(result)
       else result
+    case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}.as_single_word()]"
     case p: DoPrim =>
       for (arg<-p.args) {
         if (isBigInt(arg.tpe)) return emitBigIntExpr(e)
