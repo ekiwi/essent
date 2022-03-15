@@ -1,17 +1,16 @@
 package essent
 
 import java.io.{File, FileWriter, Writer}
-
 import essent.JavaEmitter._
 import essent.Extract._
+import essent.Util.selectFromMap
 import essent.ir._
 import firrtl._
 import firrtl.ir._
 import firrtl.options.Dependency
 import firrtl.stage.TransformManager.TransformDependency
 import firrtl.stage.transforms
-
-import logger._
+import _root_.logger._
 
 class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   val tabs = "  "
@@ -41,7 +40,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       else Seq(s"$typeStr $regName = 0L;")
     }}
     val memDecs = memories map { m: DefMemory => {
-      s"public ${genJavaType(m.dataType)} ${m.name}[${m.depth}];"
+      s"public ${genJavaType(m.dataType)}[] ${m.name} = new ${genJavaType(m.dataType)}[${m.depth}];"
     }}
     val modulesAndPrefixes = findModuleInstances(m.body)
     val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
@@ -152,6 +151,56 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(2, "}")
   }
 
+  def genEvalFuncName(partID: Int): String = "EVAL_" + partID
+
+  def genDepPartTriggers(consumerIDs: Seq[Int], condition: String): Seq[String] = {
+    consumerIDs.sorted map { consumerID => s"$flagVarName[$consumerID] |= $condition;" }
+  }
+
+  def genAllTriggers(signalNames: Seq[String], outputConsumers: Map[String, Seq[Int]],
+                     suffix: String): Seq[String] = {
+    selectFromMap(signalNames, outputConsumers).toSeq flatMap { case (name, consumerIDs) => {
+      genDepPartTriggers(consumerIDs, s"${rn.emit(name)} != ${rn.emit(name + suffix)}")
+    }}
+  }
+
+  // TODO
+  def writeZoningBody(sg: StatementGraph, condPartWorker: MakeCondPart, opt: OptFlags) {
+    writeLines(2, "if (reset || !done_reset) {")
+    writeLines(3, "sim_cached = false;")
+    writeLines(3, "regs_set = false;")
+    writeLines(2, "}")
+    writeLines(2, "if (!sim_cached) {")
+    writeLines(3, s"$flagVarName.fill(true);")
+    writeLines(2, "}")
+    writeLines(2, "sim_cached = regs_set;")
+    writeLines(2, "this->update_registers = update_registers;")
+    writeLines(2, "this->done_reset = done_reset;")
+    writeLines(2, "this->verbose = verbose;")
+    val outputConsumers = condPartWorker.getPartInputMap()
+    val externalPartInputNames = condPartWorker.getExternalPartInputNames()
+    // do activity detection on other inputs (external IOs and resets)
+    writeLines(2, genAllTriggers(externalPartInputNames, outputConsumers, condPartWorker.cacheSuffix))
+    // cache old versions
+    val extIOCaches = externalPartInputNames map {
+      sigName => s"${rn.emit(sigName + condPartWorker.cacheSuffix)} = ${rn.emit(sigName)};"
+    }
+    writeLines(2, extIOCaches.toSeq)
+    sg.stmtsOrdered foreach { stmt => stmt match {
+      case cp: CondPart => {
+        if (!cp.alwaysActive)
+          writeLines(2, s"if ($flagVarName[${cp.id}]) ${genEvalFuncName(cp.id)}();")
+        else
+          writeLines(2, s"${genEvalFuncName(cp.id)}();")
+      }
+      case _ => writeLines(2, emitStmt(stmt))
+    }}
+    // writeLines(2,  "#ifdef ALL_ON")
+    // writeLines(2, s"$flagVarName.fill(true);" )
+    // writeLines(2,  "#endif")
+    writeLines(2, "regs_set = true;")
+  }
+
   def emitSigTracker(stmt: Statement, indentLevel: Int, opt: OptFlags): Unit = {
     stmt match {
       case mw: MemWrite =>
@@ -181,6 +230,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val sg = StatementGraph(circuit, opt.removeFlatConnects)
 
     logger.info(sg.makeStatsString())
+    val containsAsserts = sg.containsStmtOfType[Stop]()
     val extIOMap = findExternalPorts(circuit)
     val condPartWorker = MakeCondPart(sg, rn, extIOMap)
     rn.populateFromSG(sg, extIOMap)
@@ -199,8 +249,32 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       case m: Module => declareModule(m, topName)
     }
 
-    writeLines(1, s"public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
-    writeBodyInner(2, sg, opt)
+    val topModule = findModule(topName, circuit) match {case m: Module => m}
+    if (opt.writeHarness) {
+      writeLines(0, "")
+      writeLines(1, s"void connect_harness(CommWrapper<struct $topName> *comm) {")
+      writeLines(2, HarnessGenerator.harnessConnections(topModule))
+      writeLines(1, "}")
+      writeLines(0, "")
+    }
+    if (containsAsserts) {
+      writeLines(1, "boolean assert_triggered = false;")
+      writeLines(1, "int assert_exit_code;")
+      writeLines(0, "")
+    }
+    if (opt.useCondParts) {
+      // TODO writeZoningPredecs(sg, condPartWorker, circuit.main, extIOMap, opt)
+    }
+    writeLines(1, "public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
+    if (opt.trackParts || opt.trackSigs)
+      writeLines(2, "cycle_count++;")
+    if (opt.useCondParts)
+      writeZoningBody(sg, condPartWorker, opt)
+    else
+      writeBodyInner(2, sg, opt)
+    if (containsAsserts)
+      writeLines(2, "if (done_reset && update_registers && assert_triggered) System.exit(assert_exit_code);")
+    // TODO writeRegResetOverrides(sg)
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, " @Override public BigInteger peek(String var) {")
@@ -221,6 +295,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(0, "}")
   }
 }
+
 
 class JavaCompiler(opt: OptFlags) {
   val readyForEssent: Seq[TransformDependency] =
