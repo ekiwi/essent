@@ -4,18 +4,25 @@ version := "0.8-SNAPSHOT"
 
 name := "essent"
 
-scalaVersion := "2.12.11"
+scalaVersion := "2.12.15"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+fork := true
+
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.1"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.2" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.4" % "test"
 
-libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.7"
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.9"
 
 libraryDependencies += "edu.berkeley.cs" %% "firrtl" % "1.4.3"
 
+libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "0.5.0"
+
+libraryDependencies += "edu.berkeley.cs" %% "chisel3" % "3.5.0"
+
+libraryDependencies += "edu.berkeley.cs" %% "treadle" % "1.5.0"
 
 // Assembly
 

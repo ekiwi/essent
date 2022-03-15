@@ -15,6 +15,7 @@ import firrtl.stage.transforms
 import logger._
 
 
+
 class EssentEmitter(initialOpt: OptFlags, writer: Writer) extends LazyLogging {
   val tabs = "  "
   val flagVarName = "PARTflags"

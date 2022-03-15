@@ -11,3 +11,14 @@ utils/bin/essent.jar
 
 # IDE related
 .idea/*
+
+.DS_Store
+
+GCD.java
+GCD.class
+GCD.h
+DecoupledGCD.java
+DecoupledGCD.class
+DecoupledGCD.h
+test_run_dir/
+# runner.sh
