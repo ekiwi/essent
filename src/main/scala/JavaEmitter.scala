@@ -127,9 +127,9 @@ object JavaEmitter {
       }
       p.op match {
         case Add => p.args map emitExprWrap mkString " + "
-        case Addw => s"(${p.args.head} + ${p.args(1)}) & ((1 << Math.max(${bitWidth(p.args.head.tpe)}, ${bitWidth(p.args(1).tpe)}) - 1"
+        case Addw => s"(${emitExprWrap(p.args.head)} + ${emitExprWrap(p.args(1))}) & ${1 << (bitWidth(p.args.head.tpe).intValue.max(bitWidth(p.args(1).tpe).intValue) - 1)}"
         case Sub => p.args map emitExprWrap mkString " - "
-        case Subw => s"(${p.args.head} - ${p.args(1)}) & ((1 << Math.max(${bitWidth(p.args.head.tpe)}, ${bitWidth(p.args(1).tpe)}) - 1"
+        case Subw => s"(${emitExprWrap(p.args.head)} - ${emitExprWrap(p.args(1))}) & ${1 << (bitWidth(p.args.head.tpe).intValue.max(bitWidth(p.args(1).tpe).intValue) - 1)}"
         case Mul => p.args map emitExprWrap mkString " * "
         case Div => p.args map emitExprWrap mkString " / "
         case Rem => p.args map emitExprWrap mkString " % "
@@ -139,29 +139,29 @@ object JavaEmitter {
         case Geq => p.args map emitExprWrap mkString " >= "
         case Eq => p.args map emitExprWrap mkString " == "
         case Neq => p.args map emitExprWrap mkString " != "
-        case Pad => s"${emitExprWrap(p.args.head)}.pad<${bitWidth(p.tpe)}>()"
-        case AsUInt => s"${emitExprWrap(p.args.head)}.asUInt()"
-        case AsSInt => s"${emitExprWrap(p.args.head)}.asSInt()"
+        case Pad => s"${emitExprWrap(p.args.head)}"
+        case AsUInt => emitExprWrap(p.args.head)
+        case AsSInt => emitExprWrap(p.args.head)
         case AsClock => throw new Exception("AsClock unimplemented!")
         case AsAsyncReset => emitExpr(p.args.head)
-        case Shl => s"${emitExprWrap(p.args.head)}.shl<${p.consts.head.toInt}>()"
-        case Shr => s"${emitExprWrap(p.args.head)}.shr<${p.consts.head.toInt}>()"
+        case Shl => s"${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}"
+        case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}"
         case Dshl => p.args map emitExprWrap mkString " << "
-        case Dshlw => s"${emitExprWrap(p.args.head)}.dshlw(${emitExpr(p.args(1))})"
+        case Dshlw => p.args map emitExprWrap mkString " >> "
         case Dshr => p.args map emitExprWrap mkString " >> "
-        case Cvt => s"${emitExprWrap(p.args.head)}.cvt()"
+        case Cvt => s"${emitExprWrap(p.args.head)}"
         case Neg => s"-${emitExprWrap(p.args.head)}"
         case Not => s"!${emitExprWrap(p.args.head)}"
         case And => p.args map emitExprWrap mkString " & "
         case Or => p.args map emitExprWrap mkString " | "
         case Xor => p.args map emitExprWrap mkString " ^ "
-        case Andr => s"${emitExprWrap(p.args.head)}.steam().reduce(Boolean.TRUE, Boolean::logicalAnd)"
-        case Orr => s"${emitExprWrap(p.args.head)}.steam().reduce(Boolean.TRUE, Boolean::logicalOr)"
-        case Xorr => s"${emitExprWrap(p.args.head)}.steam().reduce(Boolean.TRUE, Boolean::logicalXor)"
-        case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
-        case Bits => s"${emitExprWrap(p.args.head)} & ((1L << ((${p.consts.head.toInt}L + 1L) - ${p.consts(1).toInt}L)) - 1L << ${p.consts(1).toInt}L)"
-        case Head => s"${emitExprWrap(p.args.head)} & (((1L << ${bitWidth(p.args.head.tpe)}L) - 1L) << ${p.consts.head.toInt}L)"
-        case Tail => s"${emitExprWrap(p.args.head)} & ((1L << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}L) - 1L)"
+        case Andr => s"andr(${emitExprWrap(p.args.head)})"
+        case Orr => s"orr(${emitExprWrap(p.args.head)})"
+        case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
+        case Cat => s"(${emitExprWrap(p.args.head)} << ${bitWidth(p.args(1).tpe)}) + ${emitExpr(p.args(1))}"
+        case Bits => s"${emitExprWrap(p.args.head)} & ${(1 << (p.consts(1).toInt - p.consts.head.toInt + 1) - 1) << p.consts.head.toInt}"
+        case Head => s"${emitExprWrap(p.args.head)} & ${((1 << (bitWidth(p.args.head.tpe).intValue - p.consts.head.toInt)) - 1) << p.consts.head.toInt}"
+        case Tail => s"${emitExprWrap(p.args.head)} & ${(1 << (bitWidth(p.args.head.tpe).intValue - p.consts.head.toInt)) - 1}"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -218,7 +218,7 @@ object JavaEmitter {
         case Cat => "not implemented yet"
         case Bits => s"${emitExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}L) - BigInteger.ONE)"
+        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - BigInteger.ONE)"
         case _ => "not implemented"
       }
   }

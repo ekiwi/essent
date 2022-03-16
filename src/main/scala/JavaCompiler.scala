@@ -243,6 +243,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     writeLines(0, "import java.math.BigInteger;")
     writeLines(0, "import essent.Simulator;")
+    writeLines(0, "import essent.JavaUtils.*;")
     writeLines(0, "")
 
     circuit.modules foreach {
