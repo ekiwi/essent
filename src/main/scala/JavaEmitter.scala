@@ -75,22 +75,22 @@ object JavaEmitter {
       val replacements = formatters zip argWidths map { case(format, width) =>
         if (format == "%h" || format == "%x") {
           val printWidth = math.ceil(width.toDouble/4).toInt
-          (format, s"""%0$printWidth" PRIx64 """")
+          (format, s"%0${printWidth}h")
         } else {
           val printWidth = math.ceil(math.log10((1L<<width.toInt).toDouble)).toInt
-          (format, s"""%$printWidth" PRIu64 """")
+          (format, s"%${printWidth}d")
         }
       }
       val formatString = replacements.foldLeft(p.string.serialize){
         case (str, (searchFor, replaceWith)) => str.replaceFirst(searchFor, replaceWith)
       }
       val printfArgs = Seq(s""""$formatString"""") ++
-        (p.args map {arg => s"${emitExprWrap(arg)}.as_single_word()"})
-      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) printf(${printfArgs mkString ", "});")
+        (p.args map {arg => s"${emitExprWrap(arg)}"})
+      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) System.out.println(${printfArgs mkString ", "});")
     case st: Stop =>
       Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
-      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[${emitExprWrap(mw.wrAddr)}.as_single_word()] = ${emitExpr(mw.wrData)};")
+      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[${emitExprWrap(mw.wrAddr)}] = ${emitExpr(mw.wrData)};")
     case ru: RegUpdate => Seq(s"if (update_registers) ${emitExpr(ru.regRef)} = ${emitExpr(ru.expr)};")
     case r: DefRegister => Seq()
     case w: DefWire => Seq()
@@ -104,13 +104,13 @@ object JavaEmitter {
     case u: UIntLiteral =>
       val maxIn64Bits = (BigInt(1) << 64) - 1
       val width = bitWidth(u.tpe)
-      val asDecStr = u.value.toString(10)
       if (width == 1) s"${u.value == 1}"
-      else if ((width <= 64) || (u.value <= maxIn64Bits)) s"$asDecStr"
+      else if ((width <= 64) || (u.value <= maxIn64Bits)) s"${u.value.toString(10)}L"
       else emitBigIntExpr(e)
     case u: SIntLiteral =>
       val width = bitWidth(u.tpe)
-      if (width <= 64) s"${u.value.toString(10)}" else emitBigIntExpr(e)
+      if (width <= 64) s"${u.value.toString(10)}L"
+      else emitBigIntExpr(e)
     case m: Mux =>
       val condName = emitExprWrap(m.cond)
       val tvalName = emitExprWrap(m.tval)
@@ -120,7 +120,7 @@ object JavaEmitter {
       val result = s"${emitExpr(w.expr)(null)}.${w.name}"
       if (rn != null) rn.emit(result)
       else result
-    case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}.as_single_word()]"
+    case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}]"
     case p: DoPrim =>
       for (arg<-p.args) {
         if (isBigInt(arg.tpe)) return emitBigIntExpr(e)
@@ -159,9 +159,9 @@ object JavaEmitter {
         case Orr => s"${emitExprWrap(p.args.head)}.orr()"
         case Xorr => s"${emitExprWrap(p.args.head)}.xorr()"
         case Cat => s"${emitExprWrap(p.args.head)}.cat(${emitExpr(p.args(1))})"
-        case Bits => s"${emitExprWrap(p.args.head)} & ((1L << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1L << ${p.consts(1).toInt})"
-        case Head => s"${emitExprWrap(p.args.head)} & (((1L << ${bitWidth(p.args.head.tpe)}) - 1) << ${p.consts.head.toInt})"
-        case Tail => s"${emitExprWrap(p.args.head)} & ((1L << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
+        case Bits => s"${emitExprWrap(p.args.head)} & ((1L << ((${p.consts.head.toInt}L + 1L) - ${p.consts(1).toInt}L)) - 1L << ${p.consts(1).toInt}L)"
+        case Head => s"${emitExprWrap(p.args.head)} & (((1L << ${bitWidth(p.args.head.tpe)}L) - 1L) << ${p.consts.head.toInt}L)"
+        case Tail => s"${emitExprWrap(p.args.head)} & ((1L << ${bitWidth(p.args.head.tpe) - p.consts.head.toInt}L) - 1L)"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
@@ -169,9 +169,9 @@ object JavaEmitter {
   def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
     case u: UIntLiteral =>
-      s"BigInteger.valueOf(${u.value})"
+      s"""new BigInteger("${u.value}")"""
     case u: SIntLiteral =>
-      s"BigInteger.valueOf(${u.value})"
+      s"""new BigInteger("${u.value}")"""
     case m: Mux =>
       val condName = emitBigIntExprWrap(m.cond)
       val tvalName = emitBigIntExprWrap(m.tval)
@@ -218,7 +218,7 @@ object JavaEmitter {
         case Cat => "not implemented yet"
         case Bits => s"${emitExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - 1)"
+        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}L) - BigInteger.ONE)"
         case _ => "not implemented"
       }
   }
