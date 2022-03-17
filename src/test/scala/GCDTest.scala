@@ -1,10 +1,13 @@
-import essent.{Driver, JavaRuntimeCompiler, SimulatorWrapper}
+import essent.{Driver, IsSimulator, JavaRuntimeCompiler, SimulatorWrapper}
+import firrtl.stage.FirrtlFileAnnotation
+import javabackend.DeltaTester
 import org.scalatest.freespec.AnyFreeSpec
+import treadle.{TreadleTester, WriteVcdAnnotation}
 
 // sbt "testOnly *GCDTest"
 class GCDTest extends AnyFreeSpec{
   // sbt "testOnly *GCDTest -- -z testZero"
-  def testBehavior(sim : SimulatorWrapper, a : Int, b : Int, gcd : Int) : Unit = {
+  def testBehavior(sim : IsSimulator, a : Int, b : Int, gcd : Int) : Unit = {
     sim.poke("io_e", 1)
     sim.poke("io_a", a)
     sim.poke("io_b", b)
@@ -20,7 +23,9 @@ class GCDTest extends AnyFreeSpec{
 
   "smallNumbers" in {
     Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/GCD.fir"))
-    val sim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
+    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
+    val treadleSim = TreadleTester(Seq(FirrtlFileAnnotation(System.getProperty("user.dir") + "/examples/GCD.fir")))
+    val sim = new DeltaTester(treadleSim, essentSim, Seq("x", "y"))
     testBehavior(sim, 9, 6, 3)
     testBehavior(sim, 4, 12, 4)
     testBehavior(sim, 771, 880, 1)
@@ -33,7 +38,7 @@ class GCDTest extends AnyFreeSpec{
 
   private def computeGcd(a: BigInt, b: BigInt): BigInt = a.gcd(b)
 
-  private def runTest(dut: SimulatorWrapper, testValues: Iterable[(BigInt, BigInt, BigInt)]): Long = {
+  private def runTest(dut: IsSimulator, testValues: Iterable[(BigInt, BigInt, BigInt)]): Long = {
     var cycles = 0L
     dut.poke("reset", 1)
     dut.step(true)
@@ -62,9 +67,11 @@ class GCDTest extends AnyFreeSpec{
 
   "decoupled" in {
     Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"))
-    val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
+    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
+    val treadleSim = TreadleTester(Seq(FirrtlFileAnnotation(System.getProperty("user.dir") + "/examples/DecoupledGCD.fir")))
+    val dut = new DeltaTester(treadleSim, essentSim, Seq("x", "y", "xInitial", "yInitial", "busy", "resultValid"))
 
-    val repetitions = 6
+    val repetitions = 1
     val numMax = 200
     val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y), computeGcd(x, y))
     var cycles = 0L
@@ -73,7 +80,7 @@ class GCDTest extends AnyFreeSpec{
       cycles += runTest(dut, testValues)
     }
     val endTime = System.nanoTime
-    println(s"${(endTime - startTime)/1000000} milliseconds")
-    println(s"$cycles cycles")
+    //println(s"${(endTime - startTime)/1000000} milliseconds")
+    //println(s"$cycles cycles")
   }
 }
