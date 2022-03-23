@@ -23,7 +23,7 @@ class GCDTest extends AnyFreeSpec{
 
   "smallNumbers" in {
     Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/GCD.fir"))
-    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/GCD.java"))
+    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(os.pwd / "examples" / "GCD.java"))
     val treadleSim = TreadleTester(Seq(FirrtlFileAnnotation(System.getProperty("user.dir") + "/examples/GCD.fir")))
     val sim = new DeltaTester(treadleSim, essentSim, Seq("x", "y"))
     testBehavior(sim, 9, 6, 3)
@@ -67,7 +67,7 @@ class GCDTest extends AnyFreeSpec{
 
   "decoupled" in {
     Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"))
-    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
+    val essentSim : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(os.pwd / "examples" / "DecoupledGCD.java"))
     val treadleSim = TreadleTester(Seq(FirrtlFileAnnotation(System.getProperty("user.dir") + "/examples/DecoupledGCD.fir")))
     val dut = new DeltaTester(treadleSim, essentSim, Seq("x", "y", "xInitial", "yInitial", "busy", "resultValid"))
 

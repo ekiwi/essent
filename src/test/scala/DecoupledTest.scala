@@ -62,8 +62,8 @@ class DecoupledTest extends AnyFreeSpec {
 
   "decoupledEssent" in {
     val startTimeCompile = System.nanoTime
-    Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"))
-    val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
+    Driver.main(Array("-O0", "-java", (os.pwd / "examples" / "DecoupledGCD.fir").toString))
+    val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(os.pwd / "examples" / "DecoupledGCD.java"))
     val endTimeCompile = System.nanoTime
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
