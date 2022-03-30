@@ -1,10 +1,11 @@
-import chiseltest.simulator.SimulatorContext
-import essent.{Driver, SimulatorWrapper, JavaRuntimeCompiler}
+package javabackend
+
+import essent.{Driver, JavaRuntimeCompiler, SimulatorWrapper}
 import firrtl.stage.FirrtlFileAnnotation
 import org.scalatest.freespec.AnyFreeSpec
-import treadle.{TreadleTester, WriteVcdAnnotation}
+import treadle.TreadleTester
 
-class DecoupledTest extends AnyFreeSpec {
+class SimulatorBenchmark extends AnyFreeSpec {
   private def computeGcd(a: BigInt, b: BigInt): BigInt = a.gcd(b)
 
   private def runEssent(dut: SimulatorWrapper, testValues: Iterable[(BigInt, BigInt, BigInt)]): Long = {
@@ -62,8 +63,8 @@ class DecoupledTest extends AnyFreeSpec {
 
   "decoupledEssent" in {
     val startTimeCompile = System.nanoTime
-    Driver.main(Array("-O0", "-java", System.getProperty("user.dir") + "/examples/DecoupledGCD.fir"))
-    val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(System.getProperty("user.dir") + "/examples/DecoupledGCD.java"))
+    Driver.main(Array("-O0", "-java", (os.pwd / "examples" / "DecoupledGCD.fir").toString))
+    val dut : SimulatorWrapper = new SimulatorWrapper(JavaRuntimeCompiler.compile(os.pwd / "examples" / "DecoupledGCD.java"))
     val endTimeCompile = System.nanoTime
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 

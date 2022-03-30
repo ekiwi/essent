@@ -8,7 +8,6 @@ scalaVersion := "2.12.15"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
-fork := true
 
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.1"
 
