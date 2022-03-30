@@ -86,7 +86,7 @@ object JavaEmitter {
       }
       val printfArgs = Seq(s""""$formatString"""") ++
         (p.args map {arg => s"${emitExprWrap(arg)}"})
-      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) System.out.println(${printfArgs mkString ", "});")
+      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) System.out.println(String.format(${printfArgs mkString ", "}));")
     case st: Stop =>
       Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
