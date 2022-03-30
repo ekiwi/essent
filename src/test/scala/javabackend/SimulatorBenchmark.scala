@@ -1,10 +1,11 @@
-import chiseltest.simulator.SimulatorContext
-import essent.{Driver, SimulatorWrapper, JavaRuntimeCompiler}
+package javabackend
+
+import essent.{Driver, JavaRuntimeCompiler, SimulatorWrapper}
 import firrtl.stage.FirrtlFileAnnotation
 import org.scalatest.freespec.AnyFreeSpec
-import treadle.{TreadleTester, WriteVcdAnnotation}
+import treadle.TreadleTester
 
-class DecoupledTest extends AnyFreeSpec {
+class SimulatorBenchmark extends AnyFreeSpec {
   private def computeGcd(a: BigInt, b: BigInt): BigInt = a.gcd(b)
 
   private def runEssent(dut: SimulatorWrapper, testValues: Iterable[(BigInt, BigInt, BigInt)]): Long = {

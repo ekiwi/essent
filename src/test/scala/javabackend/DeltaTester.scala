@@ -1,7 +1,7 @@
 package javabackend
 
-import essent.{IsSimulator}
-import treadle.{TreadleTester}
+import essent.IsSimulator
+import treadle.TreadleTester
 
 
 class DeltaTester(reference: TreadleTester, sim: IsSimulator, checkSignals: Seq[String] = Seq()) extends IsSimulator {
