@@ -26,7 +26,7 @@ class NestedModulesTest extends AnyFreeSpec{
     val dut = new DeltaTester(treadleSim, essentSim, Seq("in1", "out1", "out2", "out3"))
 
     val numMax = 200
-    val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield BigInt(y)
+    val testValues = for {x <- 1 to numMax} yield BigInt(x)
     runTest(dut, testValues)
   }
 }

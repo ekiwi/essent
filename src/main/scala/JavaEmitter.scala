@@ -159,9 +159,9 @@ object JavaEmitter {
         case Orr => s"${emitExprWrap(p.args.head)} == 0L ? 0L : 1L"
         case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
         case Cat => s"(${emitExprWrap(p.args.head)} << ${bitWidth(p.args(1).tpe)}) + ${emitExpr(p.args(1))}"
-        case Bits => s"${emitExprWrap(p.args.head)} & ${(1 << (p.consts(1).toInt - p.consts.head.toInt + 1) - 1) << p.consts.head.toInt}"
-        case Head => s"${emitExprWrap(p.args.head)} & ${((1 << (bitWidth(p.args.head.tpe).intValue - p.consts.head.toInt)) - 1) << p.consts.head.toInt}"
-        case Tail => s"${emitExprWrap(p.args.head)} & ${(1 << (bitWidth(p.args.head.tpe).intValue - p.consts.head.toInt)) - 1}"
+        case Bits => s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L"
+        case Head => s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L"
+        case Tail => s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L"
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
