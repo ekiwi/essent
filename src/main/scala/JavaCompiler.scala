@@ -9,7 +9,7 @@ import firrtl._
 import firrtl.ir._
 import firrtl.options.Dependency
 import firrtl.stage.TransformManager.TransformDependency
-import firrtl.stage.transforms
+import firrtl.stage.{FirrtlCircuitAnnotation, FirrtlStage, RunFirrtlTransformAnnotation, transforms}
 import _root_.logger._
 
 class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
@@ -299,8 +299,8 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
 class JavaCompiler(opt: OptFlags) {
   val readyForEssent: Seq[TransformDependency] =
-    firrtl.stage.Forms.LowFormOptimized ++
       Seq(
+        Dependency(firrtl.passes.memlib.VerilogMemDelays),
         Dependency(essent.passes.ReplaceAsyncRegs),
         Dependency(essent.passes.NoClockConnects),
         Dependency(essent.passes.RegFromMem1),
@@ -315,11 +315,13 @@ class JavaCompiler(opt: OptFlags) {
 
   def compileAndEmit(circuit: Circuit): Unit = {
     val topName = circuit.main
-    val firrtlCompiler = new transforms.Compiler(readyForEssent)
-    val resultState = firrtlCompiler.execute(CircuitState(circuit, Seq()))
+    val firrtlCompiler = new FirrtlStage
+    val args = Array("-ll", "error", "-E", "low-opt")
+    val annos = Seq(FirrtlCircuitAnnotation(circuit)) ++ readyForEssent.map(RunFirrtlTransformAnnotation(_))
+    val resultState = firrtlCompiler.execute(args, annos)
     val dutWriter = new FileWriter(new File(opt.outputDir(), s"$topName.java"))
     val emitter = new EssentJavaEmitter(opt, dutWriter)
-    emitter.execute(resultState.circuit)
+    emitter.execute(resultState.collectFirst{case FirrtlCircuitAnnotation(c) => c}.get)
     dutWriter.close()
   }
 }

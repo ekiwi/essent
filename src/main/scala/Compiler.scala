@@ -405,6 +405,7 @@ class EssentCompiler(opt: OptFlags) {
     firrtl.stage.Forms.LowFormOptimized ++
     Seq(
 //      Dependency(essent.passes.LegacyInvalidNodesForConds),
+      Dependency(firrtl.passes.memlib.VerilogMemDelays),
       Dependency(essent.passes.ReplaceAsyncRegs),
       Dependency(essent.passes.NoClockConnects),
       Dependency(essent.passes.RegFromMem1),

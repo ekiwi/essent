@@ -15,7 +15,6 @@ object RemoveAsAsyncReset extends Pass {
   override def prerequisites = Seq(Dependency(ReplaceAsyncRegs), Dependency(RegFromMem1))
   override def optionalPrerequisites = firrtl.stage.Forms.LowFormOptimized
   override def invalidates(a: Transform): Boolean = a match {
-    case firrtl.transforms.RemoveReset => true
     case _                             => false
   }
 

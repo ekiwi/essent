@@ -90,7 +90,7 @@ object JavaEmitter {
     case st: Stop =>
       Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
-      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[${emitExprWrap(mw.wrAddr)}] = ${emitExpr(mw.wrData)};")
+      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[(int)${emitExprWrap(mw.wrAddr)}] = ${emitExpr(mw.wrData)};")
     case ru: RegUpdate => Seq(s"if (update_registers) ${emitExpr(ru.regRef)} = ${emitExpr(ru.expr)};")
     case r: DefRegister => Seq()
     case w: DefWire => Seq()
@@ -120,7 +120,7 @@ object JavaEmitter {
       val result = s"${emitExpr(w.expr)(null)}.${w.name}"
       if (rn != null) rn.emit(result)
       else result
-    case w: WSubAccess => s"${emitExpr(w.expr)}[${emitExprWrap(w.index)}]"
+    case w: WSubAccess => s"${emitExpr(w.expr)}[(int)${emitExprWrap(w.index)}]"
     case p: DoPrim =>
       for (arg<-p.args) {
         if (isBigInt(arg.tpe)) return emitBigIntExpr(e)
