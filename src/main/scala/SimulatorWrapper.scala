@@ -23,3 +23,15 @@ trait IsSimulator {
   def poke(signal: String, value: BigInt): Unit
   def step(update_registers: Boolean): Unit
 }
+
+/** Work in progress */
+object SimulatorWrapper {
+  def apply(source : String): SimulatorWrapper = {
+    val path = """^(.+)\\/([^\\/]+)$"""
+    source match {
+      case path =>
+      case _ =>
+    }
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(os.temp.dir() / "essentsim.java"))
+  }
+}

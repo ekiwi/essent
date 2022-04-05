@@ -7,9 +7,9 @@ object JavaRuntimeCompiler {
   import CompilerHelpers._
 
   def compile(sourcePath: os.Path): Simulator = {
-    val source = os.read(sourcePath)
+    val code = os.read(sourcePath)
     val name = sourcePath.baseName
-    val javaFile = saveSource(source, name)
+    val javaFile = saveSource(code, name)
     val classFile = compileSource(javaFile, name)
     loadClass(classFile, name).asInstanceOf[Simulator]
   }
