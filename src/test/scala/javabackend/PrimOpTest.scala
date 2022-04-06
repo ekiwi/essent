@@ -40,7 +40,31 @@ class PrimOpTest extends AnyFreeSpec{
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
       val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-      val testValues = for {x <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
+      val testValues = for {_ <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
+      runTest(dut, testValues)
+    }
+  }
+
+  "tail" in {
+    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
+      val source =
+        s"""
+           |circuit PrimOpTester :
+           |  module PrimOpTester :
+           |    input clock : Clock
+           |    input reset : UInt<1>
+           |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$w>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$w>, UOut : UInt<$w>, SOut : SInt<$w>}
+           |
+           |    node _io_UOut_T = tail(io.UArg1, io.UArg2)
+           |    io.UOut <= _io_UOut_T
+           |    node _io_SOut_T = tail(io.SArg1, io.SArg2)
+           |    node _io_SOut_T_1 = asSInt(_io_SOut_T_1)
+           |    io.SOut <= _io_SOut_T_1
+           |""".stripMargin
+      val essentSim = SimulatorWrapper(source)
+      val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
+      val testValues = for {_ <- 1 to numInputs} yield (BigInt(w, rand), BigInt(rand.nextInt(w + 1)))
       runTest(dut, testValues)
     }
   }
