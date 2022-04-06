@@ -6,6 +6,8 @@ import org.scalatest.freespec.AnyFreeSpec
 import treadle.TreadleTester
 
 class PrimOpTest extends AnyFreeSpec{
+  private val numInputs = 50
+  private val rand = new scala.util.Random(0)
 
   private def runTest(dut: IsSimulator, testValues: Iterable[(BigInt, BigInt)]): Unit = {
     for ((i, j) <- testValues) {
@@ -52,9 +54,6 @@ class PrimOpTest extends AnyFreeSpec{
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
       val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-
-      val numInputs = 50
-      val rand = new scala.util.Random(0)
       val testValues = for {x <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
       runTest(dut, testValues)
     }
