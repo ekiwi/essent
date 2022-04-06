@@ -19,20 +19,6 @@ class PrimOpTest extends AnyFreeSpec{
     }
   }
 
-  private def testRunner(paramSource: String): Unit = {
-    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
-      val source = paramSource.stripMargin
-      val essentSim = SimulatorWrapper(source)
-      val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-
-      val numInputs = 50
-      val rand = new scala.util.Random(0)
-      val testValues = for {x <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
-  }
-
-
   "add" in {
     for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
       val source =
@@ -59,6 +45,28 @@ class PrimOpTest extends AnyFreeSpec{
     }
   }
 
+  "addw" in {
+    
+  }
+
+  "sub" in {
+      val source =
+        s"""
+          |circuit PrimOpTester :
+          |  module PrimOpTester :
+          |    input clock : Clock
+          |    input reset : UInt<1>
+          |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$w>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$w>, UOut : UInt<$w>, SOut : SInt<$w>}
+          |
+          |    node _io_UOut_T = sub(io.UArg1, io.UArg2) @[main.scala 17:23]
+          |    node _io_UOut_T_1 = tail(_io_UOut_T, 1) @[main.scala 17:23]
+          |    io.UOut <= _io_UOut_T_1 @[main.scala 17:11]
+          |    node _io_SOut_T = sub(io.SArg1, io.SArg2) @[main.scala 18:23]
+          |    node _io_SOut_T_1 = tail(_io_SOut_T, 1) @[main.scala 18:23]
+          |    node _io_SOut_T_2 = asSInt(_io_SOut_T_1) @[main.scala 18:23]
+          |    io.SOut <= _io_SOut_T_2 @[main.scala 18:11]"""
+  }
+
   "tail" in {
     for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
       val source =
@@ -80,26 +88,6 @@ class PrimOpTest extends AnyFreeSpec{
       val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues = for {_ <- 1 to numInputs} yield (BigInt(w, rand), BigInt(rand.nextInt(w + 1)))
       runTest(dut, testValues)
-    }
-  }
-  "addw" in {
-    
-    }
-  "sub" in {
-      testRunner(s"""
-            |circuit PrimOpTester :
-            |  module PrimOpTester :
-            |    input clock : Clock
-            |    input reset : UInt<1>
-            |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$w>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$w>, UOut : UInt<$w>, SOut : SInt<$w>}
-            |
-            |    node _io_UOut_T = sub(io.UArg1, io.UArg2) @[main.scala 17:23]
-            |    node _io_UOut_T_1 = tail(_io_UOut_T, 1) @[main.scala 17:23]
-            |    io.UOut <= _io_UOut_T_1 @[main.scala 17:11]
-            |    node _io_SOut_T = sub(io.SArg1, io.SArg2) @[main.scala 18:23]
-            |    node _io_SOut_T_1 = tail(_io_SOut_T, 1) @[main.scala 18:23]
-            |    node _io_SOut_T_2 = asSInt(_io_SOut_T_1) @[main.scala 18:23]
-            |    io.SOut <= _io_SOut_T_2 @[main.scala 18:11]""")
     }
   }
 }
