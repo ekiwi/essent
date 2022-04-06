@@ -324,4 +324,18 @@ class JavaCompiler(opt: OptFlags) {
     emitter.execute(resultState.collectFirst{case FirrtlCircuitAnnotation(c) => c}.get)
     dutWriter.close()
   }
+
+  def compileAndEmitTemp(circuit: Circuit): os.Path = {
+    val topName = circuit.main
+    val firrtlCompiler = new FirrtlStage
+    val args = Array("-ll", "error", "-E", "low-opt")
+    val annos = Seq(FirrtlCircuitAnnotation(circuit)) ++ readyForEssent.map(RunFirrtlTransformAnnotation(_))
+    val resultState = firrtlCompiler.execute(args, annos)
+    val tempPath = os.temp.dir()
+    val dutWriter = new FileWriter(new File(tempPath.toString, s"$topName.java"))
+    val emitter = new EssentJavaEmitter(opt, dutWriter)
+    emitter.execute(resultState.collectFirst{case FirrtlCircuitAnnotation(c) => c}.get)
+    dutWriter.close()
+    tempPath / s"$topName.java"
+  }
 }

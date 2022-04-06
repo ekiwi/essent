@@ -29,19 +29,20 @@ object Driver {
   }
 
   /** Work in progress */
-  def generateTester(source: String): Unit = {
-    (new ArgsParser).getConfig(Array("-O0", "-java", os.pwd.toString + "/src/test/resources/" + source)) match {
-      case Some(config) =>
-        val opt = config
-        Logger.setClassLogLevels(Map("essent" -> logger.LogLevel(opt.essentLogLevel)))
-        Logger.setClassLogLevels(Map("firrtl" -> logger.LogLevel(opt.firrtlLogLevel)))
-        val sourceReader = Source.fromString(source)
-        val circuit = firrtl.Parser.parse(sourceReader.getLines, firrtl.Parser.IgnoreInfo)
-        sourceReader.close()
-        val compiler = new JavaCompiler(opt)
-        compiler.compileAndEmit(circuit)
-      case None =>
-    }
+  def generateTester(source: String): os.Path = {
+    val opt = OptFlags(
+      java=true,
+      removeFlatConnects = false,
+      regUpdates = false,
+      conditionalMuxes = false,
+      useCondParts=false)
+    Logger.setClassLogLevels(Map("essent" -> logger.LogLevel(opt.essentLogLevel)))
+    Logger.setClassLogLevels(Map("firrtl" -> logger.LogLevel(opt.firrtlLogLevel)))
+    val sourceReader = Source.fromString(source)
+    val circuit = firrtl.Parser.parse(sourceReader.getLines, firrtl.Parser.IgnoreInfo)
+    sourceReader.close()
+    val compiler = new JavaCompiler(opt)
+    compiler.compileAndEmitTemp(circuit)
   }
 
   def compileCPP(dutName: String, buildDir: String): ProcessBuilder = {

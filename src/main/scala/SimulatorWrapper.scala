@@ -24,14 +24,9 @@ trait IsSimulator {
   def step(update_registers: Boolean): Unit
 }
 
-/** Work in progress */
+/** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
   def apply(source : String): SimulatorWrapper = {
-    val path = """^(.+)\\/([^\\/]+)$"""
-    source match {
-      case path =>
-      case _ =>
-    }
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(os.temp.dir() / "essentsim.java"))
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source)))
   }
 }
