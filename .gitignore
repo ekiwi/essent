@@ -22,3 +22,8 @@ DecoupledGCD.class
 DecoupledGCD.h
 test_run_dir/
 # runner.sh
+.metals/*
+project/*
+.vscode/*
+.bloop/*
+.scalafmt.conf
