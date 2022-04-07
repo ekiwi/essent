@@ -219,7 +219,7 @@ object JavaEmitter {
         case Bits => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
         case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - BigInteger.ONE)"
-        case _ => "not implemented"
+        case other => s"not implemented: ${other.serialize}"
       }
   }
 
