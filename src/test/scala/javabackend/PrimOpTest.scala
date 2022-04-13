@@ -38,7 +38,7 @@ class PrimOpTest extends AnyFreeSpec {
     Implemented adding two of same size
     Need to implement adding two of different sizes
     """
-    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
+    for (w <- List(2, 32, 33, 63, 64, 65, 70)) {
       val source =
         s"""
            |circuit PrimOpTester :

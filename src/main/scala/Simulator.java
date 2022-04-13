@@ -9,7 +9,7 @@ public abstract class Simulator {
 
     abstract public void step(boolean update_registers);
 
-    private boolean xorr(long x) {
+    public boolean xorr(long x) {
         int k = 0;
         long d = x;
         while (d != 0) {
@@ -19,7 +19,7 @@ public abstract class Simulator {
         return k % 2 == 1;
     }
 
-    private boolean xorr(BigInteger x) {
+    public boolean xorr(BigInteger x) {
         int k = 0;
         BigInteger d = x;
         while (!d.equals(BigInteger.ZERO)) {
@@ -27,5 +27,29 @@ public abstract class Simulator {
             d = d.and(d.subtract(BigInteger.ONE));
         }
         return k % 2 == 1;
+    }
+
+    public long twosComplement(long x, int w) {
+        if (x == 0) {
+            return 0L;
+        } else if (x > 0) {
+            return (((1L << (64 - w)) - 1L) << w) | x;
+        }
+        else {
+            return ~(((1L << (64 - w)) - 1L) << w) | x;
+        }
+    }
+
+    public BigInteger twosComplement(BigInteger x, int w) {
+        if (x.equals(BigInteger.ZERO)) {
+            return BigInteger.ZERO;
+        }
+        BigInteger mask = BigInteger.ONE.shiftLeft(64 - w).subtract(BigInteger.ONE).shiftLeft(w);
+        if (x.compareTo(BigInteger.ZERO) > 0) {
+            return mask.or(x);
+        }
+        else {
+            return mask.not().or(x);
+        }
     }
 }

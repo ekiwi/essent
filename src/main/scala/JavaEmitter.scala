@@ -130,22 +130,22 @@ object JavaEmitter {
       p.op match {
         case Add =>
           if (bitWidth(p.args.head.tpe) >= 63 || bitWidth(p.args(1).tpe) >= 63)
-            p.args map emitBigIntExprWrap mkString " + "
+            emitBigIntExpr(p)
           else
             p.args map emitExprWrap mkString " + "
         case Sub => p.args map emitExprWrap mkString " - "
           if (bitWidth(p.args.head.tpe) >= 63 || bitWidth(p.args(1).tpe) >= 63)
-            p.args map emitBigIntExprWrap mkString " - "
+            emitBigIntExpr(p)
           else
             p.args map emitExprWrap mkString " - "
         case Mul =>
           if (bitWidth(p.args.head.tpe) + bitWidth(p.args.head.tpe) >= 64)
-            p.args map emitBigIntExprWrap mkString " * "
+            emitBigIntExpr(p)
           else
             p.args map emitExprWrap mkString " * "
         case Div => p.args map emitExprWrap mkString " / "
           if (bitWidth(p.args.head.tpe) >= 63 && p.args.head.tpe == SIntType(IntWidth(bitWidth(p.args.head.tpe))))
-            p.args map emitBigIntExprWrap mkString " / "
+            emitBigIntExpr(p)
           else
             p.args map emitExprWrap mkString " / "
         case Rem => p.args map emitExprWrap mkString " % "
@@ -161,9 +161,9 @@ object JavaEmitter {
           else
             s"${emitExprWrap(p.args.head)}"
         case AsUInt => s"${emitExprWrap(p.args.head)} < 0L ? " +
-          s"${emitExprWrap(p.args.head)} + ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
+          s"twosComplement(${p.args.head}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
         case AsSInt => s"${emitExprWrap(p.args.head)} >= ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue - 1).longValue}L ? " +
-          s"${emitExprWrap(p.args.head)} - ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
+          s"twosComplement(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
         case Shl => s"${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}"
         case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}"
         case Dshl => p.args map emitExprWrap mkString " << "
@@ -201,7 +201,12 @@ object JavaEmitter {
   }
 
   def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {
-    case w: WRef => if (rn != null) rn.emit(w.name) else w.name
+    case w: WRef =>
+      if (bitWidth(w.tpe) >= 64)
+        if (rn != null) rn.emit(w.name) else w.name
+      else
+        if (rn != null) s"BigInteger.valueOf(${rn.emit(w.name)})" else s"BigInteger.valueOf(${w.name})"
+    // we must use this constructor so that we can instantiate infinitely large values
     case u: UIntLiteral =>
       s"""new BigInteger("${u.value}")"""
     case u: SIntLiteral =>
@@ -229,8 +234,10 @@ object JavaEmitter {
         case Eq => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == 0"
         case Neq => s"!${emitBigIntExpr(p.args.head)}.equals(${emitBigIntExpr(p.args(1))})"
         case Pad => "not implemented yet3"
-        case AsUInt => "not implemented yet4"
-        case AsSInt => "not implemented yet5"
+        case AsUInt => s"${emitExprWrap(p.args.head)}.compareTo(BigInteger.ZERO) < 0 ? " +
+          s"twosComplement(${p.args.head}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
+        case AsSInt => s"${emitExprWrap(p.args.head)} >= ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue - 1).longValue}L ? " +
+          s"twosComplement(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
         case Shl => "not implemented yet7"
         case Shr => "not implemented yet8"
         case Dshl => s"${emitBigIntExpr(p.args.head)}.shiftLeft(${emitBigIntExpr(p.args(1))})"
@@ -247,7 +254,11 @@ object JavaEmitter {
         case Cat => s"(${emitBigIntExprWrap(p.args.head)}.shiftLeft(${bitWidth(p.args(1).tpe)}).add(${emitBigIntExpr(p.args(1))})"
         case Bits => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}) - BigInteger.ONE)"
+        case Tail =>
+          if (bitWidth(p.args.head.tpe) - p.consts.head < 64)
+            s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE)).longValue()"
+          else
+            s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))"
         case other => s"not implemented: ${other.serialize}"
       }
   }
