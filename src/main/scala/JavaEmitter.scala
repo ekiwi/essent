@@ -164,8 +164,6 @@ object JavaEmitter {
           s"${emitExprWrap(p.args.head)} + ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
         case AsSInt => s"${emitExprWrap(p.args.head)} >= ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue - 1).longValue}L ? " +
           s"${emitExprWrap(p.args.head)} - ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
-        case AsClock => throw new Exception("AsClock unimplemented!")
-        case AsAsyncReset => throw new Exception("AsAsyncReset unimplemented!")
         case Shl => s"${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}"
         case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}"
         case Dshl => p.args map emitExprWrap mkString " << "
@@ -220,9 +218,7 @@ object JavaEmitter {
     case p: DoPrim =>
       p.op match {
         case Add => s"${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))})"
-        case Addw => "not implemented yet1"
         case Sub => s"${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))})"
-        case Subw => "not implemented yet2"
         case Mul => s"${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))})"
         case Div => s"${emitBigIntExpr(p.args.head)}.divide(${emitBigIntExpr(p.args(1))})"
         case Rem => s"${emitBigIntExpr(p.args.head)}.remainder(${emitBigIntExpr(p.args(1))})"
@@ -235,12 +231,9 @@ object JavaEmitter {
         case Pad => "not implemented yet3"
         case AsUInt => "not implemented yet4"
         case AsSInt => "not implemented yet5"
-        case AsClock => throw new Exception("AsClock unimplemented!")
-        case AsAsyncReset => "not implemented yet6"
         case Shl => "not implemented yet7"
         case Shr => "not implemented yet8"
         case Dshl => s"${emitBigIntExpr(p.args.head)}.shiftLeft(${emitBigIntExpr(p.args(1))})"
-        case Dshlw => "not implemented yet9"
         case Dshr => s"${emitBigIntExpr(p.args.head)}.shiftRight(${emitBigIntExpr(p.args(1))})"
         case Cvt => "not implemented yet10"
         case Neg => s"${emitBigIntExpr(p.args.head)}.negate()"

@@ -9,7 +9,10 @@ class PrimOpTest extends AnyFreeSpec {
   private val numInputs = 50
   private val rand = new scala.util.Random(0)
 
-  private def runTestUnary(dut: IsSimulator, testValues: Iterable[BigInt]) : Unit = {
+  private def runTestUnary(
+      dut: IsSimulator,
+      testValues: Iterable[BigInt]
+  ): Unit = {
     for (i <- testValues) {
       dut.poke("io_UArg", i)
       dut.poke("io_SArg", i)
@@ -31,6 +34,10 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "add" in {
+    """
+    Implemented adding two of same size
+    Need to implement adding two of different sizes
+    """
     for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
       val source =
         s"""
@@ -277,57 +284,63 @@ class PrimOpTest extends AnyFreeSpec {
     }
   }
 
-  "pad" in {
-
+  "neq" in {
+    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
+      val source =
+        s"""
+          |circuit PrimOpTester :
+          |  module PrimOpTester :
+          |    input clock : Clock
+          |    input reset : UInt<1>
+          |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$w>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$w>, UOut : UInt<1>, SOut : UInt<1>}
+          |
+          |    node _io_UOut_T = neq(io.UArg1, io.UArg2)
+          |    io.UOut <= _io_UOut_T
+          |    node _io_SOut_T = neq(io.SArg1, io.SArg2)
+          |    io.SOut <= _io_SOut_T"""
+      val essentSim = SimulatorWrapper(source)
+      val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
+      val dut =
+        new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
+      val testValues =
+        for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
+      runTestBinary(dut, testValues)
+    }
   }
 
-  "asUInt" in {
+  "pad" in {}
 
-  }
+  "asUInt" in {}
 
-  "asSInt" in {
+  "asSInt" in {}
 
-  }
+  "shl" in {}
 
-  "shl" in {
+  "shr" in {}
 
-  }
+  "dshl" in {}
 
-  "shr" in {
+  "dshr" in {}
 
-  }
+  "cvt" in {}
 
-  "dshl" in {
+  "neg" in {}
 
-  }
+  "not" in {}
 
-  "dshr" in {
+  "and" in {}
 
-  }
+  "or" in {}
 
-  "not" in {
+  "xor" in {}
 
-  }
+  "andr" in {}
 
-  "neg" in {
+  "orr" in {}
 
-  }
+  "xorr" in {}
 
-  "andr" in {
-
-  }
-
-  "orr" in {
-
-  }
-
-  "xorr" in {
-
-  }
-
-  "cat" in {
-
-  }
+  "cat" in {}
 
   "bits" in {
     val source =
@@ -349,7 +362,7 @@ class PrimOpTest extends AnyFreeSpec {
     val essentSim = SimulatorWrapper(source)
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
     val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-    val testValues = for {_ <- 1 to numInputs} yield BigInt(64, rand)
+    val testValues = for { _ <- 1 to numInputs } yield BigInt(64, rand)
     runTestUnary(dut, testValues)
   }
 
@@ -373,7 +386,7 @@ class PrimOpTest extends AnyFreeSpec {
     val essentSim = SimulatorWrapper(source)
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
     val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-    val testValues = for {_ <- 1 to numInputs} yield BigInt(64, rand)
+    val testValues = for { _ <- 1 to numInputs } yield BigInt(64, rand)
     runTestUnary(dut, testValues)
   }
 
@@ -397,7 +410,7 @@ class PrimOpTest extends AnyFreeSpec {
     val essentSim = SimulatorWrapper(source)
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
     val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-    val testValues = for {_ <- 1 to numInputs} yield BigInt(64, rand)
+    val testValues = for { _ <- 1 to numInputs } yield BigInt(64, rand)
     runTestUnary(dut, testValues)
   }
 }
