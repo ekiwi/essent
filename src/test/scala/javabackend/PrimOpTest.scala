@@ -9,7 +9,15 @@ class PrimOpTest extends AnyFreeSpec {
   private val numInputs = 50
   private val rand = new scala.util.Random(0)
 
-  private def runTest(
+  private def runTestUnary(dut: IsSimulator, testValues: Iterable[BigInt]) : Unit = {
+    for (i <- testValues) {
+      dut.poke("io_UArg", i)
+      dut.poke("io_SArg", i)
+      dut.step(true)
+    }
+  }
+
+  private def runTestBinary(
       dut: IsSimulator,
       testValues: Iterable[(BigInt, BigInt)]
   ): Unit = {
@@ -18,14 +26,6 @@ class PrimOpTest extends AnyFreeSpec {
       dut.poke("io_UArg2", j)
       dut.poke("io_SArg1", i)
       dut.poke("io_SArg2", j)
-      dut.step(true)
-    }
-  }
-
-  private def runTestUnary(dut: IsSimulator, testValues: Iterable[BigInt]) : Unit = {
-    for (i <- testValues) {
-      dut.poke("io_UArg", i)
-      dut.poke("io_SArg", i)
       dut.step(true)
     }
   }
@@ -54,11 +54,9 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
-
-  "addw" in {}
 
   "sub" in {
     for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
@@ -83,11 +81,9 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
-
-  "subw" in {}
 
   "mul" in {
     for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
@@ -109,7 +105,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -133,7 +129,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -157,7 +153,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -181,7 +177,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -205,7 +201,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -229,7 +225,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -253,7 +249,7 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
@@ -277,11 +273,62 @@ class PrimOpTest extends AnyFreeSpec {
         new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
       val testValues =
         for { _ <- 1 to numInputs } yield (BigInt(w, rand), BigInt(w, rand))
-      runTest(dut, testValues)
+      runTestBinary(dut, testValues)
     }
   }
 
-  // wip
+  "pad" in {
+
+  }
+
+  "asUInt" in {
+
+  }
+
+  "asSInt" in {
+
+  }
+
+  "shl" in {
+
+  }
+
+  "shr" in {
+
+  }
+
+  "dshl" in {
+
+  }
+
+  "dshr" in {
+
+  }
+
+  "not" in {
+
+  }
+
+  "neg" in {
+
+  }
+
+  "andr" in {
+
+  }
+
+  "orr" in {
+
+  }
+
+  "xorr" in {
+
+  }
+
+  "cat" in {
+
+  }
+
   "bits" in {
     val source =
       s"""

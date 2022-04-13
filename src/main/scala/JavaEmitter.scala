@@ -12,8 +12,8 @@ object JavaEmitter {
   def isBoolean(tpe: Type): Boolean = genJavaType(tpe) == "boolean"
 
   def genJavaType(tpe: Type): String = tpe match {
-    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
-    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 64) "long" else "BigInteger"
+    case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 63) "long" else "BigInteger"
+    case SIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 63) "long" else "BigInteger"
     case AsyncResetType => "boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
@@ -99,17 +99,19 @@ object JavaEmitter {
     case _ => throw new Exception(s"Don't yet support $s")
   }
 
+  /** Takes in a firrtl expression and emits an equivalent string of Java code.
+   *  Bitwidths 64 and greater are converted from Long to BigInts in order to
+   *  prevent overflow. */
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
     case u: UIntLiteral =>
-      val maxIn64Bits = (BigInt(1) << 64) - 1
       val width = bitWidth(u.tpe)
       if (width == 1) s"${u.value == 1}"
-      else if ((width <= 64) || (u.value <= maxIn64Bits)) s"${u.value.toString(10)}L"
+      else if (width <= 63) s"${u.value.toString(10)}L"
       else emitBigIntExpr(e)
     case u: SIntLiteral =>
       val width = bitWidth(u.tpe)
-      if (width <= 64) s"${u.value.toString(10)}L"
+      if (width <= 63) s"${u.value.toString(10)}L"
       else emitBigIntExpr(e)
     case m: Mux =>
       val condName = emitExprWrap(m.cond)
@@ -126,12 +128,26 @@ object JavaEmitter {
         if (isBigInt(arg.tpe)) return emitBigIntExpr(e)
       }
       p.op match {
-        case Add => p.args map emitExprWrap mkString " + "
-        case Addw => s"(${emitExprWrap(p.args.head)} + ${emitExprWrap(p.args(1))}) & ${1 << (bitWidth(p.args.head.tpe).intValue.max(bitWidth(p.args(1).tpe).intValue) - 1)}"
+        case Add =>
+          if (bitWidth(p.args.head.tpe) >= 63 || bitWidth(p.args(1).tpe) >= 63)
+            p.args map emitBigIntExprWrap mkString " + "
+          else
+            p.args map emitExprWrap mkString " + "
         case Sub => p.args map emitExprWrap mkString " - "
-        case Subw => s"(${emitExprWrap(p.args.head)} - ${emitExprWrap(p.args(1))}) & ${1 << (bitWidth(p.args.head.tpe).intValue.max(bitWidth(p.args(1).tpe).intValue) - 1)}"
-        case Mul => p.args map emitExprWrap mkString " * "
+          if (bitWidth(p.args.head.tpe) >= 63 || bitWidth(p.args(1).tpe) >= 63)
+            p.args map emitBigIntExprWrap mkString " - "
+          else
+            p.args map emitExprWrap mkString " - "
+        case Mul =>
+          if (bitWidth(p.args.head.tpe) + bitWidth(p.args.head.tpe) >= 64)
+            p.args map emitBigIntExprWrap mkString " * "
+          else
+            p.args map emitExprWrap mkString " * "
         case Div => p.args map emitExprWrap mkString " / "
+          if (bitWidth(p.args.head.tpe) >= 63 && p.args.head.tpe == SIntType(IntWidth(bitWidth(p.args.head.tpe))))
+            p.args map emitBigIntExprWrap mkString " / "
+          else
+            p.args map emitExprWrap mkString " / "
         case Rem => p.args map emitExprWrap mkString " % "
         case Lt  => p.args map emitExprWrap mkString " < "
         case Leq => p.args map emitExprWrap mkString " <= "
@@ -139,26 +155,46 @@ object JavaEmitter {
         case Geq => p.args map emitExprWrap mkString " >= "
         case Eq => p.args map emitExprWrap mkString " == "
         case Neq => p.args map emitExprWrap mkString " != "
-        case Pad => s"${emitExprWrap(p.args.head)}"
-        case AsUInt => emitExprWrap(p.args.head)
-        case AsSInt => emitExprWrap(p.args.head)
+        case Pad =>
+          if (bitWidth(p.args.head.tpe) < p.consts.head && p.consts.head >= 64)
+            s"${emitBigIntExpr(p.args.head)}"
+          else
+            s"${emitExprWrap(p.args.head)}"
+        case AsUInt => s"${emitExprWrap(p.args.head)} < 0L ? " +
+          s"${emitExprWrap(p.args.head)} + ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
+        case AsSInt => s"${emitExprWrap(p.args.head)} >= ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue - 1).longValue}L ? " +
+          s"${emitExprWrap(p.args.head)} - ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue).longValue}L : ${emitExprWrap(p.args.head)}"
         case AsClock => throw new Exception("AsClock unimplemented!")
-        case AsAsyncReset => emitExpr(p.args.head)
+        case AsAsyncReset => throw new Exception("AsAsyncReset unimplemented!")
         case Shl => s"${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}"
         case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}"
         case Dshl => p.args map emitExprWrap mkString " << "
-        case Dshlw => p.args map emitExprWrap mkString " >> "
         case Dshr => p.args map emitExprWrap mkString " >> "
-        case Cvt => s"${emitExprWrap(p.args.head)}"
-        case Neg => s"-${emitExprWrap(p.args.head)}"
-        case Not => s"!${emitExprWrap(p.args.head)}"
-        case And => p.args map emitExprWrap mkString " & "
-        case Or => p.args map emitExprWrap mkString " | "
-        case Xor => p.args map emitExprWrap mkString " ^ "
-        case Andr => s"${emitExprWrap(p.args.head)} & ${(1 << bitWidth(p.args.head.tpe).intValue) - 1} == ${emitExprWrap(p.args.head)} ? 1L : 0L"
-        case Orr => s"${emitExprWrap(p.args.head)} == 0L ? 0L : 1L"
+        case Cvt =>
+          if (bitWidth(p.args.head.tpe) >= 63 && p.args.head.tpe == UIntType(IntWidth(bitWidth(p.args.head.tpe))))
+            s"${emitBigIntExpr(p.args.head)}"
+          else
+            s"${emitExprWrap(p.args.head)}"
+        case Neg =>
+          if (bitWidth(p.args.head.tpe) >= 63)
+            s"${emitBigIntExpr(p.args.head)}"
+          else
+            s"${emitExprWrap(p.args.head)}"
+        case Not => s"~${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case And => s"${p.args map emitExprWrap mkString " & "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case Or => s"${p.args map emitExprWrap mkString " | "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case Xor => s"${p.args map emitExprWrap mkString " ^ "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case Andr => s"${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? True : False"
+        case Orr => s"${emitExprWrap(p.args.head)} == 0L ? True : False"
         case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
-        case Cat => s"(${emitExprWrap(p.args.head)} << ${bitWidth(p.args(1).tpe)}) + ${emitExpr(p.args(1))}"
+        case Cat =>
+          if (bitWidth(p.args.head.tpe) + bitWidth(p.args.head.tpe) >= 64)
+            s"${emitBigIntExpr(p)}"
+          else {
+            val e1 = s"${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+            val e2 = s"${emitExprWrap(p.args(1))} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+            s"($e1 << ${bitWidth(p.args(1).tpe)}) | $e2"
+          }
         case Bits => s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L"
         case Head => s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L"
         case Tail => s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L"
