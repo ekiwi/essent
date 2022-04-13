@@ -100,7 +100,7 @@ object JavaEmitter {
   }
 
   /** Takes in a firrtl expression and emits an equivalent string of Java code.
-   *  Bitwidths 64 and greater are converted from Long to BigInts in order to
+   *  Bitwidths 63 and greater are converted from Long to BigInts in order to
    *  prevent overflow. */
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
@@ -182,8 +182,8 @@ object JavaEmitter {
         case And => s"${p.args map emitExprWrap mkString " & "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
         case Or => s"${p.args map emitExprWrap mkString " | "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
         case Xor => s"${p.args map emitExprWrap mkString " ^ "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
-        case Andr => s"${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? True : False"
-        case Orr => s"${emitExprWrap(p.args.head)} == 0L ? True : False"
+        case Andr => s"(${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L) == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? true : false"
+        case Orr => s"${emitExprWrap(p.args.head)} == 0L ? true : false"
         case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
         case Cat =>
           if (bitWidth(p.args.head.tpe) + bitWidth(p.args.head.tpe) >= 64)
