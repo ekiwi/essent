@@ -44,12 +44,11 @@ public abstract class Simulator {
         if (x.equals(BigInteger.ZERO)) {
             return BigInteger.ZERO;
         }
-        BigInteger mask = BigInteger.ONE.shiftLeft(64 - w).subtract(BigInteger.ONE).shiftLeft(w);
         if (x.compareTo(BigInteger.ZERO) > 0) {
-            return mask.or(x);
+            return x.subtract(BigInteger.ONE.shiftLeft(w));
         }
         else {
-            return mask.not().or(x);
+            return x.add(BigInteger.ONE.shiftLeft(w));
         }
     }
 }
