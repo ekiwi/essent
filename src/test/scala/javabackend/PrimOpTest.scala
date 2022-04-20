@@ -168,14 +168,14 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "lt" in {
-    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
+    for (w <- List(1, 2, 32, 63, 64); v <- List(1, 2, 32, 63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
            |  module PrimOpTester :
            |    input clock : Clock
            |    input reset : UInt<1>
-           |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$w>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$w>, UOut : UInt<1>, SOut : UInt<1>}
+           |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$v>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$v>, UOut : UInt<1>, SOut : UInt<1>}
            |
            |    node _io_UOut_T = lt(io.UArg1, io.UArg2)
            |    io.UOut <= _io_UOut_T
@@ -183,16 +183,16 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut =
-        new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-      val testValues =
-        for {_ <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
-      //runTestBinary(dut, )
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2"))
+      val UIntValues = UIntTupleGenerator(w, v)
+      val SIntValues = SIntTupleGenerator(w, v)
+      runTestBinary(dut, UIntValues, SIntValues)
+
     }
   }
 
   "leq" in {
-    for (w <- List(1, 2, 32, 33, 63, 64, 65, 70)) {
+    for (w <- List(1, 2, 32, 63, 64); v <- List(1, 2, 32, 63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -207,11 +207,10 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut =
-        new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
-      val testValues =
-        for {_ <- 1 to numInputs} yield (BigInt(w, rand), BigInt(w, rand))
-      //runTestBinary(dut, )
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2"))
+      val UIntValues = UIntTupleGenerator(w, v)
+      val SIntValues = SIntTupleGenerator(w, v)
+      runTestBinary(dut, UIntValues, SIntValues)
     }
   }
 
