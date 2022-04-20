@@ -25,17 +25,18 @@ object JavaEmitter {
     if (isBigInt(e.tpe)) {
       emitBigIntExpr(e)
     } else if (isBoolean(e.tpe)) {
-      s"BigInteger.valueOf(${emitExpr(e)} ? 1 : 0)"
+      if (isSInt(e)) s"${emitExpr(e)} ? BigInteger.ONE.negate() : BigInteger.ZERO"
+      else s"${emitExpr(e)} ? BigInteger.ONE : BigInteger.ZERO"
     }
     else {
       s"BigInteger.valueOf(${emitExpr(e)})"
     }
   }
 
-  def fromBigInt(tpe: Type, value: String)(implicit rn: Renamer) : String = {
-    if (isBigInt(tpe)) {
+  def fromBigInt(e: Expression, value: String)(implicit rn: Renamer) : String = {
+    if (isBigInt(e.tpe)) {
       value
-    } else if (isBoolean(tpe)) {
+    } else if (isBoolean(e.tpe)) {
       s"!$value.equals(BigInteger.ZERO)"
     }
     else {
@@ -224,7 +225,7 @@ object JavaEmitter {
       p.op match {
         case Add => s"$signConverter(${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))}), ${bitWidth(p.tpe)})"
         case Sub => s"$signConverter(${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))}), ${bitWidth(p.tpe)})"
-        case Mul => s"${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))})"
+        case Mul => s"$signConverter(${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))}), ${bitWidth(p.tpe)})"
         case Div => s"${emitBigIntExpr(p.args.head)}.divide(${emitBigIntExpr(p.args(1))})"
         case Rem => s"${emitBigIntExpr(p.args.head)}.remainder(${emitBigIntExpr(p.args(1))})"
         case Lt => s"${emitBigIntExpr(p.args.head)}.compareTo(${emitBigIntExpr(p.args(1))}) == -1"

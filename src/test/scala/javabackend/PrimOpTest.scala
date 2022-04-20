@@ -53,7 +53,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "add" in {
-    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 63, 64); v <- List(1, 2,63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -76,7 +76,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "sub" in {
-    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 63, 64); v <- List(1, 2, 63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -99,7 +99,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "mul" in {
-    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64); v <- List(1, 2, 32, 63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -114,7 +114,7 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2"))
       val UIntValues = UIntTupleGenerator(w, v)
       val SIntValues = SIntTupleGenerator(w, v)
       runTestBinary(dut, UIntValues, SIntValues)
@@ -122,7 +122,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "div" in {
-    for (w <- List(2, 32, 63, 64, 65); v <- List(2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -145,7 +145,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "rem" in {
-    for (w <- List(2, 32, 63, 64, 65); v <- List(2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
       val source =
         s"""
            |circuit PrimOpTester :

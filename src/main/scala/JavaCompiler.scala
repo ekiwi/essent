@@ -129,7 +129,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     case ClockType => Seq()
     case _ => if (!topLevel) Seq()
     else {
-      Seq(s"""case "${p.name}": ${p.name} = ${fromBigInt(p.tpe, "val")}; return;""")
+      Seq(s"""case "${p.name}": ${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
     }
   }
 
@@ -137,7 +137,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     if (m.name != topName) return
     val registers = findInstancesOf[DefRegister](m.body)
     val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(s"""case "${d.name}": ${d.name} = ${fromBigInt(d.tpe, "val")}; return;""")
+      Seq(s"""case "${d.name}": ${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
     }}
     val modulesAndPrefixes = findModuleInstances(m.body)
     val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
