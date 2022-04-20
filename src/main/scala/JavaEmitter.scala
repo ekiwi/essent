@@ -6,10 +6,7 @@ import firrtl.ir._
 import firrtl.PrimOps._
 
 object JavaEmitter {
-
-  def isBigInt(tpe: Type): Boolean = genJavaType(tpe) == "BigInteger"
-
-  def isBoolean(tpe: Type): Boolean = genJavaType(tpe) == "boolean"
+  val primOp2Expr : Set[PrimOp] = Set(Add, Sub, Mul, Div, Rem, Lt, Leq, Gt, Geq,  Eq, Neq, Dshl, Dshr, And, Or, Xor, Cat)
 
   def genJavaType(tpe: Type): String = tpe match {
     case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 63) "long" else "BigInteger"
@@ -17,6 +14,12 @@ object JavaEmitter {
     case AsyncResetType => "boolean"
     case _ => throw new Exception(s"No Java type implemented for $tpe")
   }
+
+  def isBigInt(tpe: Type): Boolean = genJavaType(tpe) == "BigInteger"
+
+  def isLong(tpe : Type) : Boolean = genJavaType(tpe) == "long"
+
+  def isBoolean(tpe: Type): Boolean = genJavaType(tpe) == "boolean"
 
   def asBigInt(e: Expression)(implicit rn: Renamer) : String = {
     if (isBigInt(e.tpe)) {
@@ -45,10 +48,9 @@ object JavaEmitter {
     else Seq("public " + genJavaType(UIntType(IntWidth(1))) + " " + p.name + " = false;")
     case _ => if (!topLevel) Seq()
     else {
-      val publicType = "public" + genJavaType(p.tpe)
-      if (p.tpe == UIntType(IntWidth(1)))
+      if (isBoolean(p.tpe))
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = false;")
-      else if (publicType.contains("BigInteger"))
+      else if (isBigInt(p.tpe))
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = BigInteger.valueOf(0);")
       else {
         Seq("public " + genJavaType(p.tpe) + " " + p.name + " = 0L;")
@@ -99,9 +101,6 @@ object JavaEmitter {
     case _ => throw new Exception(s"Don't yet support $s")
   }
 
-  /** Takes in a firrtl expression and emits an equivalent string of Java code.
-   *  Bitwidths 63 and greater are converted from Long to BigInts in order to
-   *  prevent overflow. */
   def emitExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef => if (rn != null) rn.emit(w.name) else w.name
     case u: UIntLiteral =>
@@ -124,32 +123,38 @@ object JavaEmitter {
       else result
     case w: WSubAccess => s"${emitExpr(w.expr)}[(int)${emitExprWrap(w.index)}]"
     case p: DoPrim =>
-      if (isBigInt(p.tpe))
-        return emitBigIntExpr(p)
-      for (arg<-p.args) {
-        if (isBigInt(arg.tpe)) return emitBigIntExpr(p)
-      }
+      if (isBigInt(p.tpe) || p.args.exists(arg => isBigInt(arg.tpe))) return emitBigIntExpr(p)
+      val cvtBool = if (isBoolean(p.tpe)) " != 0L ? true : false" else ""
+      val isUInt = p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))
+      val signConverter = if (p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))) "asUInt" else "asSInt"
+      val arg1 = if (isBoolean(p.args.head.tpe)) {
+        if (isUInt) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
+        else s"(${emitExprWrap(p.args.head)} ? -1L : 0L)"
+        } else emitExprWrap(p.args.head)
+      val arg2 = if (primOp2Expr contains p.op)
+        if (isBoolean(p.args(1).tpe)) {
+          if (isUInt) s"(${emitExprWrap(p.args(1))} ? 1L : 0L)"
+          else s"(${emitExprWrap(p.args(1))} ? -1L : 0L)"
+        } else emitExprWrap(p.args(1))
       p.op match {
-        case Add => p.args map emitExprWrap mkString " + "
-        case Sub => p.args map emitExprWrap mkString " - "
-        case Mul => p.args map emitExprWrap mkString " * "
-        case Div => p.args map emitExprWrap mkString " / "
-        case Rem => p.args map emitExprWrap mkString " % "
+        case Add => s"$signConverter($arg1 + $arg2, ${bitWidth(p.tpe)})"
+        case Sub => s"$signConverter($arg1 - $arg2, ${bitWidth(p.tpe)})"
+        case Mul => s"$signConverter($arg1 * $arg2, ${bitWidth(p.tpe)})"
+        case Div => p.args map emitExprWrap mkString " / " + cvtBool
+        case Rem => p.args map emitExprWrap mkString " % " + cvtBool
         case Lt  => p.args map emitExprWrap mkString " < "
         case Leq => p.args map emitExprWrap mkString " <= "
         case Gt  => p.args map emitExprWrap mkString " > "
         case Geq => p.args map emitExprWrap mkString " >= "
         case Eq => p.args map emitExprWrap mkString " == "
         case Neq => p.args map emitExprWrap mkString " != "
-        case Pad => s"${emitExprWrap(p.args.head)}"
-        case AsUInt => s"${emitExprWrap(p.args.head)} < 0L ? " +
-          s"twosComplement(${p.args.head}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
-        case AsSInt => s"${emitExprWrap(p.args.head)} >= ${scala.math.pow(2, bitWidth(p.args.head.tpe).longValue - 1).longValue}L ? " +
-          s"twosComplement(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
+        case Pad => s"$signConverter($arg1, ${bitWidth(p.tpe)})"
+        case AsUInt => s"asUInt(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
+        case AsSInt => s"asSInt(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
         case Shl => s"${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}"
-        case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}"
+        case Shr => s"${emitExprWrap(p.args.head)} >> ${p.consts.head.toInt}" + cvtBool
         case Dshl => p.args map emitExprWrap mkString " << "
-        case Dshr => p.args map emitExprWrap mkString " >> "
+        case Dshr => p.args map emitExprWrap mkString " >> " + cvtBool
         case Cvt =>
           if (bitWidth(p.args.head.tpe) >= 63 && p.args.head.tpe == UIntType(IntWidth(bitWidth(p.args.head.tpe))))
             s"${emitBigIntExpr(p.args.head)}"
@@ -160,10 +165,12 @@ object JavaEmitter {
             s"${emitBigIntExpr(p.args.head)}"
           else
             s"${emitExprWrap(p.args.head)}"
-        case Not => s"~${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
-        case And => s"${p.args map emitExprWrap mkString " & "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
-        case Or => s"${p.args map emitExprWrap mkString " | "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
-        case Xor => s"${p.args map emitExprWrap mkString " ^ "} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case Not =>
+          if (isBoolean(p.args.head.tpe)) s"!${emitExprWrap(p.args.head)}"
+          else s"~${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
+        case And => s"${p.args map emitExprWrap mkString " & "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
+        case Or => s"${p.args map emitExprWrap mkString " | "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
+        case Xor => s"${p.args map emitExprWrap mkString " ^ "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
         case Andr => s"(${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L) == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? true : false"
         case Orr => s"${emitExprWrap(p.args.head)} == 0L ? true : false"
         case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
@@ -175,26 +182,30 @@ object JavaEmitter {
             val e2 = s"${emitExprWrap(p.args(1))} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
             s"($e1 << ${bitWidth(p.args(1).tpe)}) | $e2"
           }
-        case Bits => s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L"
-        case Head => s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L"
-        case Tail => s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L"
+        case Bits => s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L" + cvtBool
+        case Head => s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L" + cvtBool
+        case Tail => s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L" + cvtBool
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
 
-  def narrowBigInt(resultTpe : Type, e : String) : String = {
-    if (isBigInt(resultTpe)) e
-    else if (isBoolean(resultTpe)) s"!($e).equals(BigInteger.ZERO)"
-    else s"($e).longValue()"
+  def narrow(resultTpe : Type, expr : String) : String = {
+    if (isBigInt(resultTpe)) expr
+    else if (isBoolean(resultTpe)) s"!($expr).equals(BigInteger.ZERO)"
+    else s"($expr).longValue()"
+  }
+
+  def isSInt(e: Expression): Boolean = {
+    SIntType(IntWidth(bitWidth(e.tpe))) == e.tpe
   }
 
   def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {
     case w: WRef =>
-      if (bitWidth(w.tpe) >= 64)
-        if (rn != null) rn.emit(w.name) else w.name
-      else
-        if (rn != null) s"BigInteger.valueOf(${rn.emit(w.name)})" else s"BigInteger.valueOf(${w.name})"
-    // we must use this constructor so that we can instantiate infinitely large values
+      val name = if (rn != null) rn.emit(w.name) else w.name
+      if (bitWidth(w.tpe) >= 64) name
+      else if (bitWidth(w.tpe) >= 2) s"BigInteger.valueOf($name)"
+      else if (isSInt(w)) s"$name ? BigInteger.ONE.negate() : BigInteger.ZERO"
+      else s"$name ? BigInteger.ONE : BigInteger.ZERO"
     case u: UIntLiteral =>
       s"""new BigInteger("${u.value}")"""
     case u: SIntLiteral =>
@@ -209,9 +220,10 @@ object JavaEmitter {
       if (rn != null) rn.emit(result)
       else result
     case p: DoPrim =>
+      val signConverter = if (p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))) "asUInt" else "asSInt"
       p.op match {
-        case Add => s"${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))})"
-        case Sub => s"${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))})"
+        case Add => s"$signConverter(${emitBigIntExpr(p.args.head)}.add(${emitBigIntExpr(p.args(1))}), ${bitWidth(p.tpe)})"
+        case Sub => s"$signConverter(${emitBigIntExpr(p.args.head)}.subtract(${emitBigIntExpr(p.args(1))}), ${bitWidth(p.tpe)})"
         case Mul => s"${emitBigIntExpr(p.args.head)}.multiply(${emitBigIntExpr(p.args(1))})"
         case Div => s"${emitBigIntExpr(p.args.head)}.divide(${emitBigIntExpr(p.args(1))})"
         case Rem => s"${emitBigIntExpr(p.args.head)}.remainder(${emitBigIntExpr(p.args(1))})"
@@ -242,7 +254,7 @@ object JavaEmitter {
         case Cat => s"(${emitBigIntExprWrap(p.args.head)}.shiftLeft(${bitWidth(p.args(1).tpe)}).add(${emitBigIntExpr(p.args(1))})"
         case Bits => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => narrowBigInt(p.tpe, s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))")
+        case Tail => narrow(p.tpe, s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))")
         case other => s"not implemented: ${other.serialize}"
       }
   }

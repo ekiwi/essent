@@ -53,7 +53,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "add" in {
-    for (w <- List(2, 32, 63, 64, 65); v <- List(2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -63,9 +63,9 @@ class PrimOpTest extends AnyFreeSpec {
            |    output io : { flip UArg1 : UInt<$w>, flip UArg2 : UInt<$v>, flip SArg1 : SInt<$w>, flip SArg2 : SInt<$v>, UOut : UInt<${scala.math.max(w, v) + 1}>, SOut : SInt<${scala.math.max(w, v) + 1}> }
            |
            |    node _io_UOut_T = add(io.UArg1, io.UArg2)
-           |    io.UOut <= _io_UOut_T_1
+           |    io.UOut <= _io_UOut_T
            |    node _io_SOut_T = add(io.SArg1, io.SArg2)
-           |    io.SOut <= _io_SOut_T_2""".stripMargin
+           |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
       val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
@@ -76,7 +76,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "sub" in {
-    for (w <- List(2, 32, 63, 64, 65); v <- List(2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -99,7 +99,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "mul" in {
-    for (w <- List(2, 32, 63, 64, 65); v <- List(2, 32, 63, 64, 65)) {
+    for (w <- List(1, 2, 32, 63, 64, 65); v <- List(1, 2, 32, 63, 64, 65)) {
       val source =
         s"""
            |circuit PrimOpTester :

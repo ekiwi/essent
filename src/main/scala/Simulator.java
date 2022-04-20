@@ -29,26 +29,35 @@ public abstract class Simulator {
         return k % 2 == 1;
     }
 
-    public long twosComplement(long x, int w) {
-        if (x == 0) {
-            return 0L;
-        } else if (x > 0) {
+    /** Interprets X with bitwidth W as a signed integer. */
+    public long asSInt(long x, int w) {
+        if (x >= (1L << (w - 1))) {
             return (((1L << (64 - w)) - 1L) << w) | x;
         }
-        else {
-            return ~(((1L << (64 - w)) - 1L) << w) | x;
-        }
+        return x;
     }
 
-    public BigInteger twosComplement(BigInteger x, int w) {
-        if (x.equals(BigInteger.ZERO)) {
-            return BigInteger.ZERO;
+    /** Interprets X with bitwidth W as an unsigned integer. */
+    public long asUInt(long x, int w) {
+        if (x < 0L) {
+            return ~(((1L << (64 - w)) - 1L) << w) & x;
         }
-        if (x.compareTo(BigInteger.ZERO) > 0) {
+        return x;
+    }
+
+    /** Interprets X with bitwidth W as a signed integer. */
+    public BigInteger asSInt(BigInteger x, int w) {
+        if (x.compareTo(BigInteger.ONE.shiftLeft(w - 1).subtract(BigInteger.ONE)) > 0) {
             return x.subtract(BigInteger.ONE.shiftLeft(w));
         }
-        else {
+        return x;
+    }
+
+    /** Interprets X with bitwidth W as an unsigned integer. */
+    public BigInteger asUInt(BigInteger x, int w) {
+        if (x.compareTo(BigInteger.ZERO) < 0){
             return x.add(BigInteger.ONE.shiftLeft(w));
         }
+        return x;
     }
 }
