@@ -151,25 +151,19 @@ object JavaEmitter {
         case Pad => s"$signConverter($arg1, ${bitWidth(p.tpe)})"
         case AsUInt => s"asUInt(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
         case AsSInt => s"asSInt(${emitExprWrap(p.args.head)}, ${bitWidth(p.args.head.tpe)}) : ${emitExprWrap(p.args.head)}"
-        case Shl => s"$signConverter(${emitExprWrap(p.args.head)} << ${p.consts.head.toInt})"
+        case Shl => s"$signConverter(${emitExprWrap(p.args.head)} << ${p.consts.head.toInt}, ${bitWidth(p.tpe)})"
         case Shr => narrowLong(p.tpe, s"$signConverter($arg1 >> ${p.consts.head.toInt})")
-        case Dshl => s"$signConverter(${emitExprWrap(p.args.head)} << $arg2)"
+        case Dshl => s"$signConverter(${emitExprWrap(p.args.head)} << $arg2, ${bitWidth(p.tpe)})"
         case Dshr => narrowLong(p.tpe, s"$signConverter($arg1 >> $arg2)")
-        case Cvt => arg1
-        case Neg =>
-          if (bitWidth(p.args.head.tpe) >= 63)
-            s"${emitBigIntExpr(p.args.head)}"
-          else
-            s"${emitExprWrap(p.args.head)}"
-        case Not =>
-          if (isBoolean(p.args.head.tpe)) s"!${emitExprWrap(p.args.head)}"
-          else s"~${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
-        case And => s"${p.args map emitExprWrap mkString " & "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
-        case Or => s"${p.args map emitExprWrap mkString " | "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
-        case Xor => s"${p.args map emitExprWrap mkString " ^ "} & ${(1L << bitWidth(p.tpe).longValue) - 1L}L"
-        case Andr => s"(${emitExprWrap(p.args.head)} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L) == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? true : false"
-        case Orr => s"${emitExprWrap(p.args.head)} == 0L ? true : false"
-        case Xorr => s"xorr(${emitExprWrap(p.args.head)})"
+        case Cvt => narrowLong(p.tpe, arg1)
+        case Neg => narrowLong(p.tpe, s"$signConverter(-$arg1,${bitWidth(p.tpe)})")
+        case Not => narrowLong(p.tpe, s"~($arg1 & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L))")
+        case And => narrowLong(p.tpe, s"($arg1 & $arg2) & ${(1L << bitWidth(p.tpe).longValue) - 1L}L")
+        case Or => narrowLong(p.tpe, s"($arg1 | $arg2) & ${(1L << bitWidth(p.tpe).longValue) - 1L}L")
+        case Xor => narrowLong(p.tpe, s"($arg1 ^ $arg2) & ${(1L << bitWidth(p.tpe).longValue) - 1L}L")
+        case Andr => s"($arg1 & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L) == ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L ? true : false"
+        case Orr => s"$arg1 == 0L ? true : false"
+        case Xorr => s"xorr($arg1)"
         case Cat =>
           if (bitWidth(p.args.head.tpe) + bitWidth(p.args.head.tpe) >= 64)
             s"${emitBigIntExpr(p)}"
@@ -255,7 +249,7 @@ object JavaEmitter {
         case Cat => s"(${emitBigIntExprWrap(p.args.head)}.shiftLeft(${bitWidth(p.args(1).tpe)}).add(${emitBigIntExpr(p.args(1))})"
         case Bits => s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.valueOf((1 << ((${p.consts.head.toInt} + 1) - ${p.consts(1).toInt})) - 1 << ${p.consts(1).toInt}))"
         case Head => "not implemented yet"
-        case Tail => narrow(p.tpe, s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))")
+        case Tail => narrowBigInt(p.tpe, s"${emitBigIntExprWrap(p.args.head)}.and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))")
         case other => s"not implemented: ${other.serialize}"
       }
   }
