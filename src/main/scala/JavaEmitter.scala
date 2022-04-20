@@ -128,12 +128,12 @@ object JavaEmitter {
       val isUInt = p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))
       val signConverter = if (p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))) "asUInt" else "asSInt"
       val arg1 = if (isBoolean(p.args.head.tpe)) {
-        if (isUInt) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
+        if (p.args.head.tpe == UIntType(IntWidth(bitWidth(p.args.head.tpe)))) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
         else s"(${emitExprWrap(p.args.head)} ? -1L : 0L)"
         } else emitExprWrap(p.args.head)
       val arg2 = if (primOp2Expr contains p.op)
         if (isBoolean(p.args(1).tpe)) {
-          if (isUInt) s"(${emitExprWrap(p.args(1))} ? 1L : 0L)"
+          if (p.args(1).tpe == UIntType(IntWidth(bitWidth(p.args(1).tpe)))) s"(${emitExprWrap(p.args(1))} ? 1L : 0L)"
           else s"(${emitExprWrap(p.args(1))} ? -1L : 0L)"
         } else emitExprWrap(p.args(1))
       p.op match {
@@ -172,9 +172,9 @@ object JavaEmitter {
             val e2 = s"${emitExprWrap(p.args(1))} & ${(1L << bitWidth(p.args.head.tpe).longValue) - 1L}L"
             s"($e1 << ${bitWidth(p.args(1).tpe)}) | $e2"
           }
-        case Bits => s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L" + cvtBool
-        case Head => s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L" + cvtBool
-        case Tail => s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L" + cvtBool
+        case Bits => narrowLong(p.tpe, s"${emitExprWrap(p.args.head)} & ${(1L << (p.consts(1).toLong - p.consts.head.toLong + 1L) - 1L) << p.consts.head.toLong}L")
+        case Head => narrowLong(p.tpe, s"${emitExprWrap(p.args.head)} & ${((1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L) << p.consts.head.toLong}L")
+        case Tail => narrowLong(p.tpe, s"${emitExprWrap(p.args.head)} & ${(1L << (bitWidth(p.args.head.tpe).longValue - p.consts.head.toLong)) - 1L}L")
       }
     case _ => throw new Exception(s"Don't yet support $e")
   }
