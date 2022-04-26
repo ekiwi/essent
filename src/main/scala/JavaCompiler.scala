@@ -243,6 +243,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
     writeLines(0, "import java.math.BigInteger;")
     writeLines(0, "import essent.Simulator;")
+    writeLines(0, "import java.util.ArrayList;")
     writeLines(0, "")
 
     circuit.modules foreach {
@@ -273,7 +274,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     else
       writeBodyInner(2, sg, opt)
     if (containsAsserts)
-      writeLines(2, "if (done_reset && update_registers && assert_triggered) System.exit(assert_exit_code);")
+      writeLines(2, "if (done_reset && update_registers && assert_triggered) stop_codes.add(assert_exit_code);")
     // TODO writeRegResetOverrides(sg)
     writeLines(1, "}")
     writeLines(0, "")

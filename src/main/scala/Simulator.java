@@ -1,17 +1,24 @@
 package essent;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 
 public abstract class Simulator {
+    public ArrayList<Integer> stop_codes = new ArrayList<>();
+
+    public int[] getStopCodes() {
+        return stop_codes.stream().mapToInt(i->i).toArray();
+    }
+
     abstract public BigInteger peek(String var);
 
     abstract public void poke(String var, BigInteger val);
 
     abstract public void step(boolean update_registers);
 
-    public boolean xorr(long x) {
+    public boolean xorr(long x, int w) {
         int k = 0;
-        long d = x;
+        long d = x & ((1L<<w) - 1);
         while (d != 0) {
             k = k + 1;
             d = d & (d - 1L);
@@ -19,9 +26,9 @@ public abstract class Simulator {
         return k % 2 == 1;
     }
 
-    public boolean xorr(BigInteger x) {
+    public boolean xorr(BigInteger x, int w) {
         int k = 0;
-        BigInteger d = x;
+        BigInteger d = x.and(BigInteger.ONE.shiftLeft(w).subtract(BigInteger.ONE));
         while (!d.equals(BigInteger.ZERO)) {
             k = k + 1;
             d = d.and(d.subtract(BigInteger.ONE));

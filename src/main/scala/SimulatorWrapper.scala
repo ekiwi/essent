@@ -1,5 +1,7 @@
 package essent
 
+import collection.JavaConverters._
+
 class SimulatorWrapper(sim : Simulator) extends IsSimulator {
   private var stale = true
   def peek(signal: String): BigInt = {
@@ -15,6 +17,10 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
   def step(update_registers: Boolean): Unit = {
     stale = true
     sim.step(update_registers)
+  }
+
+  def getStopCodes: List[Int] = {
+    sim.getStopCodes.toList
   }
 }
 
