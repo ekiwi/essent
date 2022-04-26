@@ -126,20 +126,20 @@ object JavaEmitter {
     case p: DoPrim =>
       if (isBigInt(p.tpe) || p.args.exists(arg => isBigInt(arg.tpe))) return emitBigIntExpr(p)
       val isUInt = p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))
-      val signConverter = if (p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))) "asUInt" else "asSInt"
+      val signConverter = if (p.tpe.isInstanceOf[UIntType]) "asUInt" else "asSInt"
       val arg1 = if (isBoolean(p.args.head.tpe)) {
-        if (p.args.head.tpe == UIntType(IntWidth(bitWidth(p.args.head.tpe)))) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
+        if (p.args.head.tpe.isInstanceOf[UIntType]) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
         else s"(${emitExprWrap(p.args.head)} ? -1L : 0L)"
         } else emitExprWrap(p.args.head)
       val arg2 = if (primOp2Expr contains p.op)
         if (isBoolean(p.args(1).tpe)) {
-          if (p.args(1).tpe == UIntType(IntWidth(bitWidth(p.args(1).tpe)))) s"(${emitExprWrap(p.args(1))} ? 1L : 0L)"
+          if (p.args(1).tpe.isInstanceOf[UIntType]) s"(${emitExprWrap(p.args(1))} ? 1L : 0L)"
           else s"(${emitExprWrap(p.args(1))} ? -1L : 0L)"
         } else emitExprWrap(p.args(1))
       p.op match {
-        case Add => s"$signConverter($arg1 + $arg2, ${bitWidth(p.tpe)})"
-        case Sub => s"$signConverter($arg1 - $arg2, ${bitWidth(p.tpe)})"
-        case Mul => s"$signConverter($arg1 * $arg2, ${bitWidth(p.tpe)})"
+        case Add => s"$arg1 + $arg2"
+        case Sub => s"$arg1 - $arg2"
+        case Mul => s"$arg1 * $arg2"
         case Div => narrowLong(p.tpe, s"$signConverter($arg1 / $arg2, ${bitWidth(p.tpe)})")
         case Rem => narrowLong(p.tpe, s"$signConverter($arg1 % $arg2, ${bitWidth(p.tpe)})")
         case Lt  => s"$arg1 < $arg2"
@@ -213,7 +213,7 @@ object JavaEmitter {
     case p: DoPrim =>
       val signConverter = if (p.tpe == UIntType(IntWidth(bitWidth(p.tpe)))) "asUInt" else "asSInt"
       val arg1 = emitBigIntExprWrap(p.args.head)
-      val arg2 = emitBigIntExprWrap(p.args(1))
+      val arg2 = if (primOp2Expr contains p.op) emitBigIntExprWrap(p.args(1))
       p.op match {
         case Add => s"$signConverter(($arg1).add($arg2), ${bitWidth(p.tpe)})"
         case Sub => s"$signConverter(($arg1).subtract($arg2), ${bitWidth(p.tpe)})"
