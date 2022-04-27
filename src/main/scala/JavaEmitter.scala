@@ -88,8 +88,8 @@ object JavaEmitter {
         case (str, (searchFor, replaceWith)) => str.replaceFirst(searchFor, replaceWith)
       }
       val printfArgs = Seq(s""""$formatString"""") ++
-        (p.args map {arg => s"${emitExprWrap(arg)}"})
-      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) System.out.println(String.format(${printfArgs mkString ", "}));")
+        (p.args map {arg => if (isBoolean(arg.tpe)) s"${emitExprWrap(arg)} ? 1L : 0L" else emitExprWrap(arg)})
+      Seq(s"if (done_reset && update_registers && verbose && ${emitExprWrap(p.en)}) System.out.print(String.format(${printfArgs mkString ", "}));")
     case st: Stop =>
       Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>

@@ -291,7 +291,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, "@Override public void step(boolean update_registers) {")
-    writeLines(2, "eval(update_registers, false, false);")
+    writeLines(2, "eval(update_registers, true, true);")
     writeLines(1, "}")
     writeLines(0, "}")
   }
