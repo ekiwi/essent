@@ -125,6 +125,7 @@ object JavaEmitter {
     case w: WSubAccess => s"${emitExpr(w.expr)}[(int)${emitExprWrap(w.index)}]"
     case p: DoPrim =>
       if (isBigInt(p.tpe) || p.args.exists(arg => isBigInt(arg.tpe))) return emitBigIntExpr(p)
+      val signCvt = if (p.tpe.isInstanceOf[UIntType]) "asUInt" else "asSInt"
       val arg1 = if (isBoolean(p.args.head.tpe)) {
         if (p.args.head.tpe.isInstanceOf[UIntType]) s"(${emitExprWrap(p.args.head)} ? 1L : 0L)"
         else s"(${emitExprWrap(p.args.head)} ? -1L : 0L)"
@@ -136,7 +137,7 @@ object JavaEmitter {
         } else emitExprWrap(p.args(1))
       p.op match {
         case Add => s"$arg1 + $arg2"
-        case Sub => s"$arg1 - $arg2"
+        case Sub => s"$signCvt($arg1 - $arg2, ${bitWidth(p.tpe)})"
         case Mul => s"$arg1 * $arg2"
         case Div => narrowLong(p.tpe, s"$arg1 / $arg2")
         case Rem => narrowLong(p.tpe, s"$arg1 % $arg2")
