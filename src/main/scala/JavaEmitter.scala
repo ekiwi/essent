@@ -4,9 +4,18 @@ import essent.ir._
 import firrtl._
 import firrtl.ir._
 import firrtl.PrimOps._
+import scala.collection.mutable.ListBuffer
 
 object JavaEmitter {
   val primOp2Expr : Set[PrimOp] = Set(Add, Sub, Mul, Div, Rem, Lt, Leq, Gt, Geq,  Eq, Neq, Dshl, Dshr, And, Or, Xor, Cat)
+  var cache : ListBuffer[String] = ListBuffer[String]()
+  var cacheIndex = 0
+
+  def addCache(expr : String) : String = {
+    cacheIndex += 1
+    cache += s"final BigInteger c$cacheIndex = $expr;"
+    s"c$cacheIndex"
+  }
 
   def genJavaType(tpe: Type): String = tpe match {
     case UIntType(IntWidth(w)) => if (w == 1) "boolean" else if (w <= 63) "long" else "BigInteger"
@@ -202,9 +211,9 @@ object JavaEmitter {
       else if (isSInt(w)) s"$name ? BigInteger.ONE.negate() : BigInteger.ZERO"
       else s"$name ? BigInteger.ONE : BigInteger.ZERO"
     case u: UIntLiteral =>
-      s"""new BigInteger("${u.value}")"""
+      addCache(s"""new BigInteger("${u.value}")""")
     case u: SIntLiteral =>
-      s"""new BigInteger("${u.value}")"""
+      addCache(s"""new BigInteger("${u.value}")""")
     case m: Mux =>
       val condName = emitBigIntExprWrap(m.cond)
       val tvalName = emitBigIntExprWrap(m.tval)
@@ -246,20 +255,36 @@ object JavaEmitter {
             narrowBigInt(p.tpe,s"${bitWidth(p.args.head.tpe)} > $shamt ? ($arg1).shiftRight($shamt) : BigInteger.ONE.negate()")
         case Cvt => narrowBigInt(p.tpe, arg1)
         case Neg => narrowBigInt(p.tpe, s"$arg1.negate()")
-        case Not => narrowBigInt(p.tpe, s"""($arg1).not().and(new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}"))""")
-        case And => narrowBigInt(p.tpe, s"""($arg1).and($arg2).and(new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}"))""")
-        case Or => narrowBigInt(p.tpe, s"""($arg1).or($arg2).and(new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}"))""")
-        case Xor => narrowBigInt(p.tpe, s"""($arg1).xor($arg2).and(new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}"))""")
-        case Andr => s"""($arg1).and(new BigInteger("${(BigInt(1) << bitWidth(p.args.head.tpe).intValue) - BigInt(1)}")).equals(new BigInteger("${(BigInt(1) << bitWidth(p.args.head.tpe).intValue) - BigInt(1)}")) ? true : false"""
+        case Not =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}")""")
+          narrowBigInt(p.tpe, s"""($arg1).not().and($c)""")
+        case And =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}")""")
+          narrowBigInt(p.tpe, s"""($arg1).and($arg2).and($c)""")
+        case Or =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}")""")
+          narrowBigInt(p.tpe, s"""($arg1).or($arg2).and($c)""")
+        case Xor =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)}")""")
+          narrowBigInt(p.tpe, s"""($arg1).xor($arg2).and($c)""")
+        case Andr =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.args.head.tpe).intValue) - BigInt(1)}")""")
+          s"""($arg1).and($c).equals($c) ? true : false"""
         case Orr => s"($arg1).equals(BigInteger.ZERO) ? false : true"
         case Xorr => s"xorr($arg1, ${bitWidth(p.args.head.tpe)})"
         case Cat =>
-          val e1 = s"""$arg1.and(new BigInteger("${(BigInt(1) << bitWidth(p.args.head.tpe).intValue) - BigInt(1)}"))"""
-          val e2 = s"""$arg2.and(new BigInteger("${(BigInt(1) << bitWidth(p.args(1).tpe).intValue) - BigInt(1)}"))"""
-          s"$e1.shiftLeft(${bitWidth(p.args(1).tpe)}).or($e2)"
-        case Bits => narrowBigInt(p.tpe, s"""($arg1).and(new BigInteger("${((BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)) << p.consts(1).intValue}")).shiftRight(${p.consts(1).toInt})""")
-        case Head => narrowBigInt(p.tpe, s"""($arg1).and(new BigInteger("${((BigInt(1) << p.consts.head.intValue) - 1) << (bitWidth(p.args.head.tpe).intValue - p.consts.head.intValue)}")).shiftRight(${bitWidth(p.args.head.tpe).intValue - p.consts.head.intValue})""")
-        case Tail => narrowBigInt(p.tpe, s"($arg1).and(BigInteger.ONE.shiftLeft(${bitWidth(p.args.head.tpe) - p.consts.head.toInt}).subtract(BigInteger.ONE))")
+          val c1 = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.args.head.tpe).intValue) - BigInt(1)}")""")
+          val c2 = addCache(s"""new BigInteger("${(BigInt(1) << bitWidth(p.args(1).tpe).intValue) - BigInt(1)}")""")
+          s"$arg1.and($c1).shiftLeft(${bitWidth(p.args(1).tpe)}).or($arg2.and($c2))"
+        case Bits =>
+          val c = addCache(s"""new BigInteger("${((BigInt(1) << bitWidth(p.tpe).intValue) - BigInt(1)) << p.consts(1).intValue}")""")
+          narrowBigInt(p.tpe, s"""($arg1).and($c).shiftRight(${p.consts(1).toInt})""")
+        case Head =>
+          val c = addCache(s"""new BigInteger("${((BigInt(1) << p.consts.head.intValue) - 1) << (bitWidth(p.args.head.tpe).intValue - p.consts.head.intValue)}")""")
+          narrowBigInt(p.tpe, s"""($arg1).and($c).shiftRight(${bitWidth(p.args.head.tpe).intValue - p.consts.head.intValue})""")
+        case Tail =>
+          val c = addCache(s"""new BigInteger("${(BigInt(1) << (bitWidth(p.args.head.tpe).toInt - p.consts.head.toInt)) - 1}")""")
+          narrowBigInt(p.tpe, s"($arg1).and($c)")
         case other => s"not implemented: ${other.serialize}"
       }
   }

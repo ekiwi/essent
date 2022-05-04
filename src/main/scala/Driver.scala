@@ -31,7 +31,7 @@ object Driver {
   /** Work in progress */
   def generateTester(source: String, optimize: Boolean): os.Path = {
     val opt =
-      if (optimize) OptFlags(java=true)
+      if (optimize) OptFlags(java=true, useCondParts=false)
       else OptFlags(
         java=true,
         removeFlatConnects = false,

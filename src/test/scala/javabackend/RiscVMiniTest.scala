@@ -8,6 +8,8 @@ import treadle.executable.{ClockInfo, StopException}
 import treadle.{ClockInfoAnnotation, TreadleTester}
 import essent.{IsSimulator, SimulatorWrapper}
 
+import java.io.{OutputStream, PrintStream}
+
 class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   "deltaTest" in {
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
@@ -21,7 +23,7 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   }
 
   "benchmarkEssent" in {
-    var cycles = 0L
+    val cycles = 100000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
@@ -30,9 +32,8 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
     val startTimeExecute = System.nanoTime
-    while (essentSim.peek("cycle") != BigInt(100000)) {
+    for (_ <- 0 to cycles) {
       essentSim.step(true)
-      cycles += 1
     }
     val endTimeExecute = System.nanoTime
 
@@ -43,7 +44,7 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   }
 
   "benchmarkTreadle" in {
-    var cycles = 0L
+    val cycles = 100000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
@@ -52,9 +53,8 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
     println(s"Treadle Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
     val startTimeExecute = System.nanoTime
-    while (treadleSim.peek("cycle") != BigInt(100000)) {
+    for (_ <- 0 to cycles) {
       treadleSim.step(1)
-      cycles += 1
     }
     val endTimeExecute = System.nanoTime
 
