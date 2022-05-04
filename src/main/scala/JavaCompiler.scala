@@ -86,7 +86,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
         if (rn.nameToMeta(cm.name).decType == MuxOut)
           writeLines(indentLevel, s"${genJavaType(cm.mux.tpe)} ${rn.emit(cm.name)};")
         val muxCondRaw = emitExpr(cm.mux.cond)
-        val muxCond = if (muxCondRaw == "reset") s"UNLIKELY($muxCondRaw)" else muxCondRaw
+        val muxCond = muxCondRaw
         writeLines(indentLevel, s"if ($muxCond) {")
         writeBodyInner(indentLevel + 1, StatementGraph(cm.tWay), noMoreMuxOpts)
         writeLines(indentLevel, "} else {")
@@ -277,6 +277,8 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       writeLines(2, "if (done_reset && update_registers && assert_triggered) stop_codes.add(assert_exit_code);")
     // TODO writeRegResetOverrides(sg)
     writeLines(1, "}")
+    writeLines(0, "")
+    writeLines(1, JavaEmitter.cache)
     writeLines(0, "")
     writeLines(1, " @Override public BigInteger peek(String var) {")
     circuit.modules foreach {

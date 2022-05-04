@@ -32,9 +32,6 @@ object Driver {
   def generateTester(source: String): os.Path = {
     val opt = OptFlags(
       java=true,
-      removeFlatConnects = false,
-      regUpdates = false,
-      conditionalMuxes = false,
       useCondParts=false)
     Logger.setClassLogLevels(Map("essent" -> logger.LogLevel(opt.essentLogLevel)))
     Logger.setClassLogLevels(Map("firrtl" -> logger.LogLevel(opt.firrtlLogLevel)))
