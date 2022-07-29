@@ -1,16 +1,19 @@
 package essent
 
 import java.io.{File, FileWriter, Writer}
+
 import essent.JavaEmitter._
 import essent.Extract._
-import essent.Util.selectFromMap
 import essent.ir._
+import essent.Util._
 import firrtl._
 import firrtl.ir._
 import firrtl.options.Dependency
 import firrtl.stage.TransformManager.TransformDependency
 import firrtl.stage.{FirrtlCircuitAnnotation, FirrtlStage, RunFirrtlTransformAnnotation, transforms}
-import _root_.logger._
+
+import logger._
+
 
 class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
   val tabs = "  "
@@ -23,12 +26,17 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
   implicit val rn: Renamer = new Renamer
 
+  // Writing To File
+  //----------------------------------------------------------------------------
   def writeLines(indentLevel: Int, lines: String): Unit = writeLines(indentLevel, Seq(lines))
 
   def writeLines(indentLevel: Int, lines: Seq[String]): Unit = {
     lines.foreach { s => writer.write(tabs * indentLevel + s + "\n") }
   }
 
+
+  // Declaring Modules
+  //----------------------------------------------------------------------------
   def declareModule(m: Module, topName: String): Unit = {
     val registers = findInstancesOf[DefRegister](m.body)
     val memories = findInstancesOf[DefMemory](m.body)
@@ -76,6 +84,10 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
   }
 
+
+  // Write General-purpose Eval
+  //----------------------------------------------------------------------------
+  // TODO: move specialized CondMux emitter elsewhere?
   def writeBodyInner(indentLevel: Int, sg: StatementGraph, opt: OptFlags,
                      keepAvail: Set[String] = Set()): Unit = {
     if (opt.conditionalMuxes)
@@ -164,19 +176,69 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }}
   }
 
-  // TODO
-  def writeZoningBody(sg: StatementGraph, condPartWorker: MakeCondPart, opt: OptFlags) {
+  def writeZoningPredecs(sg: StatementGraph, condPartWorker: MakeCondPart, topName: String,
+                         extIOtypes: Map[String, Type], opt: OptFlags): Unit = {
+    // predeclare part outputs
+    val outputPairs = condPartWorker.getPartOutputsToDeclare()
+    val outputConsumers = condPartWorker.getPartInputMap()
+    writeLines(1, outputPairs map {case (name, tpe) => s"${genJavaType(tpe)} ${rn.emit(name)};"})
+    val extIOCacheDecs = condPartWorker.getExternalPartInputTypes(extIOtypes) map {
+      case (name, tpe) => s"${genJavaType(tpe)} ${rn.emit(name + condPartWorker.cacheSuffix)};"
+    }
+    writeLines(1, extIOCacheDecs)
+    writeLines(1, s"boolean[] $flagVarName = new boolean[${condPartWorker.getNumParts()}];")
+    // FUTURE: worry about namespace collisions with user variables
+    writeLines(1, s"boolean sim_cached = false;")
+    writeLines(1, s"boolean regs_set = false;")
+    writeLines(1, s"boolean update_registers;")
+    writeLines(1, s"boolean done_reset;")
+    writeLines(1, s"boolean verbose;")
+    writeLines(0, "")
+    sg.stmtsOrdered foreach { stmt => stmt match {
+      case cp: CondPart => {
+        writeLines(1, s"private void ${genEvalFuncName(cp.id)}() {")
+        if (!cp.alwaysActive)
+          writeLines(2, s"$flagVarName[${cp.id}] = false;")
+        if (opt.trackParts)
+          writeLines(2, s"$actVarName[${cp.id}]++;")
+
+        val cacheOldOutputs = cp.outputsToDeclare.toSeq map {
+          case (name, tpe) => { s"${genJavaType(tpe)} ${rn.emit(name + condPartWorker.cacheSuffix)} = ${rn.emit(name)};"
+          }}
+        writeLines(2, cacheOldOutputs)
+        val (regUpdates, noRegUpdates) = partitionByType[RegUpdate](cp.memberStmts)
+        val keepAvail = (cp.outputsToDeclare map { _._1 }).toSet
+        writeBodyInner(2, StatementGraph(noRegUpdates), opt, keepAvail)
+        writeLines(2, genAllTriggers(cp.outputsToDeclare.keys.toSeq, outputConsumers, condPartWorker.cacheSuffix))
+        val regUpdateNamesInPart = regUpdates flatMap findResultName
+        writeLines(2, genAllTriggers(regUpdateNamesInPart, outputConsumers, "$next"))
+        writeLines(2, regUpdates flatMap emitStmt)
+        // triggers for MemWrites
+        val memWritesInPart = cp.memberStmts collect { case mw: MemWrite => mw }
+        val memWriteTriggers = memWritesInPart flatMap { mw => {
+          val condition = s"${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}"
+          genDepPartTriggers(outputConsumers.getOrElse(mw.memName, Seq()), condition)
+        }}
+        writeLines(2, memWriteTriggers)
+        writeLines(1, "}")
+      }
+      case _ => throw new Exception(s"Statement at top-level is not a CondPart (${stmt.serialize})")
+    }}
+    writeLines(0, "")
+  }
+
+  def writeZoningBody(sg: StatementGraph, condPartWorker: MakeCondPart, opt: OptFlags): Unit = {
     writeLines(2, "if (reset || !done_reset) {")
     writeLines(3, "sim_cached = false;")
     writeLines(3, "regs_set = false;")
     writeLines(2, "}")
     writeLines(2, "if (!sim_cached) {")
-    writeLines(3, s"$flagVarName.fill(true);")
+    writeLines(3, s"Arrays.fill($flagVarName, true);")
     writeLines(2, "}")
     writeLines(2, "sim_cached = regs_set;")
-    writeLines(2, "this->update_registers = update_registers;")
-    writeLines(2, "this->done_reset = done_reset;")
-    writeLines(2, "this->verbose = verbose;")
+    writeLines(2, "this.update_registers = update_registers;")
+    writeLines(2, "this.done_reset = done_reset;")
+    writeLines(2, "this.verbose = verbose;")
     val outputConsumers = condPartWorker.getPartInputMap()
     val externalPartInputNames = condPartWorker.getExternalPartInputNames()
     // do activity detection on other inputs (external IOs and resets)
@@ -195,9 +257,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       }
       case _ => writeLines(2, emitStmt(stmt))
     }}
-    // writeLines(2,  "#ifdef ALL_ON")
-    // writeLines(2, s"$flagVarName.fill(true);" )
-    // writeLines(2,  "#endif")
     writeLines(2, "regs_set = true;")
   }
 
@@ -244,6 +303,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(0, "import java.math.BigInteger;")
     writeLines(0, "import essent.Simulator;")
     writeLines(0, "import java.util.ArrayList;")
+    writeLines(0, "import java.util.Arrays;")
     writeLines(0, "")
 
     circuit.modules foreach {
@@ -264,7 +324,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       writeLines(0, "")
     }
     if (opt.useCondParts) {
-      // TODO writeZoningPredecs(sg, condPartWorker, circuit.main, extIOMap, opt)
+      writeZoningPredecs(sg, condPartWorker, circuit.main, extIOMap, opt)
     }
     writeLines(1, "public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
     if (opt.trackParts || opt.trackSigs)

@@ -1,7 +1,5 @@
 package essent
 
-import collection.JavaConverters._
-
 class SimulatorWrapper(sim : Simulator) extends IsSimulator {
   private var stale = true
   def peek(signal: String): BigInt = {
@@ -33,6 +31,6 @@ trait IsSimulator {
 /** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
   def apply(source : String): SimulatorWrapper = {
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimize=false)))
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimize=true)))
   }
 }
