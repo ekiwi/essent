@@ -50,6 +50,9 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     val memDecs = memories map { m: DefMemory => {
       s"public ${genJavaType(m.dataType)}[] ${m.name} = new ${genJavaType(m.dataType)}[${m.depth}];"
     }}
+    val memInstantiation = memories filter(x => genJavaType(x.dataType) == "BigInteger") map { m: DefMemory => {
+      s"Arrays.fill(${m.name}, BigInteger.ZERO);"
+    }}
     val modulesAndPrefixes = findModuleInstances(m.body)
     val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
       val instanceName = fullName.split("\\.").last
@@ -68,6 +71,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       writeLines(1, moduleDecs)
       writeLines(1, s"public ${m.name}() {")
       writeLines(2, moduleDecs2)
+      writeLines(2, memInstantiation)
       writeLines(1, "}")
     }
     else {
@@ -78,6 +82,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       writeLines(1, moduleDecs)
       writeLines(1, s"public ${m.name}() {")
       writeLines(2, moduleDecs2)
+      writeLines(2, memInstantiation)
       writeLines(1, "}")
       writeLines(0, "}")
       writeLines(0, "")

@@ -102,7 +102,12 @@ object JavaEmitter {
     case st: Stop =>
       Seq(s"if (${emitExpr(st.en)}) {assert_triggered = true; assert_exit_code = ${st.ret};}")
     case mw: MemWrite =>
-      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[(int)${emitExprWrap(mw.wrAddr)}] = ${emitExpr(mw.wrData)};")
+      val arrayIndex = if (bitWidth(mw.wrAddr.tpe) == 1) {
+        s"(${emitExprWrap(mw.wrAddr)} ? 1 : 0)"
+      } else {
+        s"(int)${emitExprWrap(mw.wrAddr)}"
+      }
+      Seq(s"if (update_registers && ${emitExprWrap(mw.wrEn)} && ${emitExprWrap(mw.wrMask)}) ${mw.memName}[$arrayIndex] = ${emitExpr(mw.wrData)};")
     case ru: RegUpdate => Seq(s"if (update_registers) ${emitExpr(ru.regRef)} = ${emitExpr(ru.expr)};")
     case r: DefRegister => Seq()
     case w: DefWire => Seq()
@@ -131,7 +136,12 @@ object JavaEmitter {
       val result = s"${emitExpr(w.expr)(null)}.${w.name}"
       if (rn != null) rn.emit(result)
       else result
-    case w: WSubAccess => s"${emitExpr(w.expr)}[(int)${emitExprWrap(w.index)}]"
+    case w: WSubAccess =>
+      if (bitWidth(w.index.tpe) == 1) {
+        s"${emitExpr(w.expr)}[(${emitExprWrap(w.index)} ? 1 : 0)]"
+      } else {
+        s"${emitExpr(w.expr)}[(int)${emitExprWrap(w.index)}]"
+      }
     case p: DoPrim =>
       if (isBigInt(p.tpe) || p.args.exists(arg => isBigInt(arg.tpe))) return emitBigIntExpr(p)
       val signCvt = if (p.tpe.isInstanceOf[UIntType]) "asUInt" else "asSInt"
