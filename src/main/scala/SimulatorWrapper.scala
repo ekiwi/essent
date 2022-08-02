@@ -30,7 +30,7 @@ trait IsSimulator {
 
 /** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
-  def apply(source : String): SimulatorWrapper = {
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimize=true)))
+  def apply(source : String, optimization : String = "O3"): SimulatorWrapper = {
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization)))
   }
 }

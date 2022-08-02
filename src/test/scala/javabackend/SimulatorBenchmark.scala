@@ -130,7 +130,7 @@ class SimulatorBenchmark extends AnyFreeSpec {
 
   "decoupledEssent" in {
     val startTimeCompile = System.nanoTime
-    val dut = SimulatorWrapper(source)
+    val dut = SimulatorWrapper(source, "O3")
     val endTimeCompile = System.nanoTime
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 

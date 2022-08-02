@@ -4,11 +4,9 @@ import logger.LazyLogging
 import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import treadle.executable.{ClockInfo, StopException}
+import treadle.executable.ClockInfo
 import treadle.{ClockInfoAnnotation, TreadleTester}
-import essent.{IsSimulator, SimulatorWrapper}
-
-import java.io.{OutputStream, PrintStream}
+import essent.SimulatorWrapper
 
 class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   "deltaTest" in {
@@ -23,7 +21,7 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   }
 
   "benchmarkEssent" in {
-    val cycles = 100000
+    val cycles = 1000000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
@@ -44,7 +42,7 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   }
 
   "benchmarkTreadle" in {
-    val cycles = 100000
+    val cycles = 1000000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
