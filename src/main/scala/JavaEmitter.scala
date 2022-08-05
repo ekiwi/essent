@@ -25,10 +25,16 @@ object JavaEmitter {
   }
 
   def isBigInt(tpe: Type): Boolean = genJavaType(tpe) == "BigInteger"
-
   def isLong(tpe : Type) : Boolean = genJavaType(tpe) == "long"
-
   def isBoolean(tpe: Type): Boolean = genJavaType(tpe) == "boolean"
+
+  def isUInt(e: Expression): Boolean = {
+    UIntType(IntWidth(bitWidth(e.tpe))) == e.tpe
+  }
+
+  def isSInt(e: Expression): Boolean = {
+    SIntType(IntWidth(bitWidth(e.tpe))) == e.tpe
+  }
 
   def asBigInt(e: Expression)(implicit rn: Renamer) : String = {
     if (isBigInt(e.tpe)) {
@@ -51,6 +57,17 @@ object JavaEmitter {
     else {
       s"$value.longValue()"
     }
+  }
+
+  def narrowBigInt(resultTpe: Type, expr: String): String = {
+    if (isBigInt(resultTpe)) expr
+    else if (isBoolean(resultTpe)) s"!($expr).equals(BigInteger.ZERO)"
+    else s"($expr).longValue()"
+  }
+
+  def narrowLong(resultTpe: Type, expr: String): String = {
+    if (isLong(resultTpe)) expr
+    else s"($expr) != 0L"
   }
 
   def emitPort(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
@@ -196,21 +213,6 @@ object JavaEmitter {
         case other => s"not implemented: ${other.serialize}"
       }
     case _ => throw new Exception(s"Don't yet support $e")
-  }
-
-  def narrowBigInt(resultTpe : Type, expr : String) : String = {
-    if (isBigInt(resultTpe)) expr
-    else if (isBoolean(resultTpe)) s"!($expr).equals(BigInteger.ZERO)"
-    else s"($expr).longValue()"
-  }
-
-  def narrowLong(resultTpe : Type, expr : String) : String = {
-    if (isLong(resultTpe)) expr
-    else s"($expr) != 0L"
-  }
-
-  def isSInt(e: Expression): Boolean = {
-    SIntType(IntWidth(bitWidth(e.tpe))) == e.tpe
   }
 
   def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {
