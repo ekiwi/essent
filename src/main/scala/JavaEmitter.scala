@@ -36,19 +36,19 @@ object JavaEmitter {
     SIntType(IntWidth(bitWidth(e.tpe))) == e.tpe
   }
 
-  def asBigInt(e: Expression)(implicit rn: Renamer) : String = {
+  def asBigInt(e: Expression, prefix : String) : String = {
     if (isBigInt(e.tpe)) {
       emitBigIntExpr(e)
     } else if (isBoolean(e.tpe)) {
-      if (isSInt(e)) s"${emitExpr(e)} ? BigInteger.ONE.negate() : BigInteger.ZERO"
-      else s"${emitExpr(e)} ? BigInteger.ONE : BigInteger.ZERO"
+      if (isSInt(e)) s"$prefix${emitExpr(e)} ? BigInteger.ONE.negate() : BigInteger.ZERO"
+      else s"$prefix${emitExpr(e)} ? BigInteger.ONE : BigInteger.ZERO"
     }
     else {
-      s"BigInteger.valueOf(${emitExpr(e)})"
+      s"BigInteger.valueOf($prefix${emitExpr(e)})"
     }
   }
 
-  def fromBigInt(e: Expression, value: String)(implicit rn: Renamer) : String = {
+  def fromBigInt(e: Expression, value: String) : String = {
     if (isBigInt(e.tpe)) {
       value
     } else if (isBoolean(e.tpe)) {
@@ -215,7 +215,7 @@ object JavaEmitter {
     case _ => throw new Exception(s"Don't yet support $e")
   }
 
-  def emitBigIntExpr(e: Expression)(implicit rn: Renamer): String = e match {
+  def emitBigIntExpr(e: Expression)(implicit rn: Renamer = null): String = e match {
     case w: WRef =>
       val name = if (rn != null) rn.emit(w.name) else w.name
       if (bitWidth(w.tpe) >= 64) name

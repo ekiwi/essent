@@ -122,57 +122,67 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     }
   }
 
-  def writePeek(m: Module, topName: String) : Unit = {
-    if (m.name != topName) return
-    val registers = findInstancesOf[DefRegister](m.body)
-    val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(s"""case "${d.name}": return ${asBigInt(Reference(d))};""")
-    }}
-    val modulesAndPrefixes = findModuleInstances(m.body)
-    val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
-    val instanceName = fullName.split("\\.").last
-    s"$module $instanceName;"
-  }
+  def writePeek(circuit: Circuit) : Unit = {
+    writeLines(1, " @Override public BigInteger peek(String var) {")
     writeLines(2, "switch (var) {")
-    val modName = m.name
-    writeLines(3, registerDecs)
-    writeLines(3, m.ports flatMap returnName(modName == topName))
+    val modules = findAllModuleInstances(circuit: Circuit)
+    for ((modName, fullName) <- modules) {
+      val m = findModule(modName, circuit)
+      m match {
+        case m : Module =>
+          val registers = findInstancesOf[DefRegister](m.body)
+          val registerDecs = registers flatMap {
+            d: DefRegister => Seq(s"""case "$fullName${d.name}": return ${asBigInt(Reference(d), fullName)};""")
+          }
+          val portDecs = m.ports flatMap {
+            p: Port => p.tpe match {
+              case ClockType => Seq()
+              case _ =>
+                if (m.name != circuit.main) Seq()
+                else Seq(s"""case "$fullName${p.name}": return ${asBigInt(Reference(p), fullName)};""")
+            }
+          }
+          writeLines(3, registerDecs)
+          writeLines(3, portDecs)
+        case m : ExtModule =>
+        // NOT IMPLEMENTED
+      }
+    }
     writeLines(3, "default: return null;")
     writeLines(2, "}")
+    writeLines(1, "}")
   }
 
-  def returnName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
-    case ClockType => Seq()
-    case _ => if (!topLevel) Seq()
-    else {
-      Seq(s"""case "${p.name}": return ${asBigInt(Reference(p))};""")
-    }
-  }
-
-  def setName(topLevel: Boolean)(p: Port): Seq[String] = p.tpe match {
-    case ClockType => Seq()
-    case _ => if (!topLevel) Seq()
-    else {
-      Seq(s"""case "${p.name}": ${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
-    }
-  }
-
-  def writePoke(m: Module, topName: String) : Unit = {
-    if (m.name != topName) return
-    val registers = findInstancesOf[DefRegister](m.body)
-    val registerDecs = registers flatMap { d: DefRegister => {
-      Seq(s"""case "${d.name}": ${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
-    }}
-    val modulesAndPrefixes = findModuleInstances(m.body)
-    val moduleDecs = modulesAndPrefixes map { case (module, fullName) =>
-      val instanceName = fullName.split("\\.").last
-      s"$module $instanceName;"
-    }
+  def writePoke(circuit: Circuit) : Unit = {
+    writeLines(1, " @Override public void poke(String var, BigInteger val) {")
     writeLines(2, "switch (var) {")
-    val modName = m.name
-    writeLines(3, registerDecs)
-    writeLines(3, m.ports flatMap setName(modName == topName))
+    val modules = findAllModuleInstances(circuit: Circuit)
+    for ((modName, fullName) <- modules) {
+      val m = findModule(modName, circuit)
+      m match {
+        case m: Module =>
+          val registers = findInstancesOf[DefRegister](m.body)
+          val registerDecs = registers flatMap {
+            d: DefRegister => Seq(s"""case "$fullName${d.name}": $fullName${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
+          }
+          val portDecs = m.ports flatMap {
+            p: Port =>
+              p.tpe match {
+                case ClockType => Seq()
+                case _ =>
+                  if (m.name != circuit.main) Seq()
+                  else Seq(s"""case "$fullName${p.name}": $fullName${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
+              }
+          }
+          writeLines(3, registerDecs)
+          writeLines(3, portDecs)
+        case m: ExtModule =>
+        // NOT IMPLEMENTED
+      }
+    }
+    writeLines(3, "default: return;")
     writeLines(2, "}")
+    writeLines(1, "}")
   }
 
   // Write Zoning Optimized Eval
@@ -319,17 +329,9 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(0, "")
     writeLines(1, JavaEmitter.cache)
     writeLines(0, "")
-    writeLines(1, " @Override public BigInteger peek(String var) {")
-    circuit.modules foreach {
-      case m: Module => writePeek(m, topName)
-    }
-    writeLines(1, "}")
+    writePeek(circuit)
     writeLines(0, "")
-    writeLines(1, " @Override public void poke(String var, BigInteger val) {")
-    circuit.modules foreach {
-      case m: Module => writePoke(m, topName)
-    }
-    writeLines(1, "}")
+    writePoke(circuit)
     writeLines(0, "")
     writeLines(1, "@Override public void step(boolean update_registers) {")
     writeLines(2, "eval(update_registers, true, true);")
@@ -341,19 +343,19 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
 
 class JavaCompiler(opt: OptFlags) {
   val readyForEssent: Seq[TransformDependency] =
-      Seq(
-        Dependency(firrtl.passes.memlib.VerilogMemDelays),
-        Dependency(essent.passes.ReplaceAsyncRegs),
-        Dependency(essent.passes.NoClockConnects),
-        Dependency(essent.passes.RegFromMem1),
-        Dependency(essent.passes.FactorMemReads),
-        Dependency(essent.passes.FactorMemWrites),
-        Dependency(essent.passes.SplitRegUpdates),
-        Dependency(essent.passes.FixMulResultWidth),
-        Dependency(essent.passes.DistinctTypeInstNames),
-        Dependency(essent.passes.RemoveAsAsyncReset),
-        Dependency(essent.passes.ReplaceRsvdKeywords)
-      )
+    Seq(
+      Dependency(firrtl.passes.memlib.VerilogMemDelays),
+      Dependency(essent.passes.ReplaceAsyncRegs),
+      Dependency(essent.passes.NoClockConnects),
+      Dependency(essent.passes.RegFromMem1),
+      Dependency(essent.passes.FactorMemReads),
+      Dependency(essent.passes.FactorMemWrites),
+      Dependency(essent.passes.SplitRegUpdates),
+      Dependency(essent.passes.FixMulResultWidth),
+      Dependency(essent.passes.DistinctTypeInstNames),
+      Dependency(essent.passes.RemoveAsAsyncReset),
+      Dependency(essent.passes.ReplaceRsvdKeywords)
+    )
 
   def compileAndEmit(circuit: Circuit): Unit = {
     val topName = circuit.main
