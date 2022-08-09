@@ -12,9 +12,9 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   "deltaTest" in {
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
-    val essentSim = SimulatorWrapper(input)
+    val essentSim = SimulatorWrapper(input, "O0")
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(input),ClockInfoAnnotation(Seq(ClockInfo("clock", period = 10, initialOffset = 1)))))
-    val dut = new DeltaTester(treadleSim, essentSim, Seq("state", "cycle", "cntr", "_T_386", "_T_389"))
+    val dut = new DeltaTester(treadleSim, essentSim, Seq("state", "cntr", "_T_386", "_T_389"))
     for (_ <- 0 to 400) {
       dut.step(true)
     }
