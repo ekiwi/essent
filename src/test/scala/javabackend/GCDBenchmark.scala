@@ -5,7 +5,7 @@ import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import treadle.TreadleTester
 
-class SimulatorBenchmark extends AnyFreeSpec {
+class GCDBenchmark extends AnyFreeSpec {
   private val source = """
     |circuit DecoupledGCD :
     |  module DecoupledGCD :
