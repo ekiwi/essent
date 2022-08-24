@@ -28,14 +28,16 @@ class DeltaTester(reference: TreadleTester, sim: IsSimulator, checkSignals: Seq[
     sim.poke(signal, value)
   }
 
-  override def step(update_registers: Boolean): Unit = {
+  override def step(update_registers: Boolean, checkSignal: Boolean = true): Unit = {
     if(update_registers) {
       reference.step()
       cycle += 1
     }
     sim.step(update_registers)
-    checkSignals.foreach { signal =>
-      peek(signal)
+    if (checkSignal) {
+      checkSignals.foreach { signal =>
+        peek(signal)
+      }
     }
   }
 }
