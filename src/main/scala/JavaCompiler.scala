@@ -281,6 +281,9 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
           writeLines(2, s"${genEvalFuncName(cp.id)}();")
       case stmt => writeLines(2, emitStmt(stmt))
     }
+    writeLines(2, "if (!update_registers) {")
+    writeLines(3, "Arrays.fill(PARTflags, true);")
+    writeLines(2, "}")
     writeLines(2, "regs_set = true;")
   }
 

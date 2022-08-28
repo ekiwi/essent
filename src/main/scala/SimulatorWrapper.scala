@@ -12,7 +12,7 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
 
   def poke(signal: String, value: BigInt): Unit = sim.poke(signal, value.bigInteger)
 
-  def step(update_registers: Boolean): Unit = {
+  def step(update_registers: Boolean, checkSignal: Boolean = true): Unit = {
     stale = true
     sim.step(update_registers)
   }
@@ -25,7 +25,7 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
 trait IsSimulator {
   def peek(signal: String): BigInt
   def poke(signal: String, value: BigInt): Unit
-  def step(update_registers: Boolean): Unit
+  def step(update_registers: Boolean, checkSignal: Boolean = true): Unit
 }
 
 /** Work in progress. Only takes in strings for now. */
