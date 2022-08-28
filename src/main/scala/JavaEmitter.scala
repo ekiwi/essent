@@ -38,7 +38,7 @@ object JavaEmitter {
 
   def asBigInt(e: Expression, prefix : String) : String = {
     if (isBigInt(e.tpe)) {
-      emitBigIntExpr(e)
+      s"$prefix${emitBigIntExpr(e)}"
     } else if (isBoolean(e.tpe)) {
       if (isSInt(e)) s"$prefix${emitExpr(e)} ? BigInteger.ONE.negate() : BigInteger.ZERO"
       else s"$prefix${emitExpr(e)} ? BigInteger.ONE : BigInteger.ZERO"
