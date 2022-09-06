@@ -1,6 +1,6 @@
 package javabackend
 
-import essent.{IsSimulator, SimulatorWrapper}
+import essent.{IsSimulator, JavaRuntimeCompiler, SimulatorWrapper}
 import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import treadle.TreadleTester
@@ -78,7 +78,6 @@ class GCDTest extends AnyFreeSpec{
   private def runTest(dut: IsSimulator, testValues: Iterable[(BigInt, BigInt)]): Unit = {
     dut.poke("reset", 1)
     dut.step(true)
-    dut.step(true)
     dut.poke("reset", 0)
 
     dut.poke("output_ready", 1)
@@ -97,7 +96,10 @@ class GCDTest extends AnyFreeSpec{
   }
 
   "testZero" in {
-    val essentSim = SimulatorWrapper(source)
+//    val essentSim = SimulatorWrapper(source, partCutoff=2)
+    val stream = getClass.getResourceAsStream("/DecoupledGCD.java")
+    val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
+    val essentSim = new SimulatorWrapper(JavaRuntimeCompiler.compile("DecoupledGCD", circuitSource))
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
     val dut = new DeltaTester(treadleSim, essentSim, Seq("x", "y", "xInitial", "yInitial", "busy", "resultValid"))
 

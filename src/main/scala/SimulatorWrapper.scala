@@ -3,7 +3,8 @@ package essent
 class SimulatorWrapper(sim : Simulator) extends IsSimulator {
   private var stale = true
   def peek(signal: String): BigInt = {
-    if(stale) {
+    if (stale) {
+      sim.storePARTflags()
       sim.step(false)
       stale = false
     }
@@ -14,6 +15,7 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
 
   def step(update_registers: Boolean, checkSignal: Boolean = true): Unit = {
     stale = true
+    sim.loadPARTflags()
     sim.step(update_registers)
   }
 
@@ -25,12 +27,12 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
 trait IsSimulator {
   def peek(signal: String): BigInt
   def poke(signal: String, value: BigInt): Unit
-  def step(update_registers: Boolean, checkSignal: Boolean = true): Unit
+  def step(update_registers: Boolean, checkSignal: Boolean = true): Unit]
 }
 
 /** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
-  def apply(source : String, optimization : String = "O3"): SimulatorWrapper = {
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization)))
+  def apply(source : String, optimization : String = "O3", partCutoff: Int = 8): SimulatorWrapper = {
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization, partCutoff)))
   }
 }
