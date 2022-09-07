@@ -16,10 +16,6 @@ public abstract class Simulator {
 
     abstract public void step(boolean update_registers);
 
-    abstract public void storePARTflags();
-
-    abstract public void loadPARTflags();
-
     public boolean xorr(long x, int w) {
         int k = 0;
         long d = x & ((1L<<w) - 1);

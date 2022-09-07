@@ -85,23 +85,18 @@ class GCDTest extends AnyFreeSpec{
       dut.poke("input_bits_value1", i)
       dut.poke("input_bits_value2", j)
       dut.poke("input_valid", 1)
-      dut.step(true)
 
       while(dut.peek("output_valid") == 0) {
         dut.step(true)
       }
-      dut.peek("output_bits_gcd")
-      dut.peek("output_valid")
     }
   }
 
   "testZero" in {
-//    val essentSim = SimulatorWrapper(source, partCutoff=2)
-    val stream = getClass.getResourceAsStream("/DecoupledGCD.java")
-    val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
-    val essentSim = new SimulatorWrapper(JavaRuntimeCompiler.compile("DecoupledGCD", circuitSource))
+    val essentSim = SimulatorWrapper(source, partCutoff=2)
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-    val dut = new DeltaTester(treadleSim, essentSim, Seq("x", "y", "xInitial", "yInitial", "busy", "resultValid"))
+    val checkSignals = Seq("xInitial", "yInitial", "x", "y", "busy", "resultValid", "reset", "input_ready", "input_valid", "input_bits_value1", "input_bits_value2", "output_ready", "output_valid", "output_bits_value1", "output_bits_value2", "output_bits_gcd")
+    val dut = new DeltaTester(treadleSim, essentSim, checkSignals)
 
     val numMax = 200
     val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y))
