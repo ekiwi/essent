@@ -29,22 +29,23 @@ object Driver {
   }
 
   /** Work in progress */
-  def generateTester(source: String, optimize: String): os.Path = {
+  def generateTester(source: String, optimize: String, partCutoff: Int = 8): os.Path = {
     val opt =
       if (optimize == "O2") OptFlags(
         java=true,
-        useCondParts=false)
+        useCondParts=false,
+        partCutoff=partCutoff)
       else if (optimize == "O1") OptFlags(
         java=true,
         conditionalMuxes = false,
-        useCondParts=false)
+        partCutoff = partCutoff)
       else if (optimize == "O0") OptFlags(
         java=true,
         removeFlatConnects = false,
         regUpdates = false,
         conditionalMuxes = false,
-        useCondParts=false)
-      else OptFlags(java=true)
+        partCutoff = partCutoff)
+      else OptFlags(java=true, partCutoff = partCutoff)
     Logger.setClassLogLevels(Map("essent" -> logger.LogLevel(opt.essentLogLevel)))
     Logger.setClassLogLevels(Map("firrtl" -> logger.LogLevel(opt.firrtlLogLevel)))
     val sourceReader = Source.fromString(source)

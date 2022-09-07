@@ -3,7 +3,7 @@ package essent
 class SimulatorWrapper(sim : Simulator) extends IsSimulator {
   private var stale = true
   def peek(signal: String): BigInt = {
-    if(stale) {
+    if (stale) {
       sim.step(false)
       stale = false
     }
@@ -30,7 +30,7 @@ trait IsSimulator {
 
 /** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
-  def apply(source : String, optimization : String = "O3"): SimulatorWrapper = {
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization)))
+  def apply(source : String, optimization : String = "O3", partCutoff: Int = 8): SimulatorWrapper = {
+    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization, partCutoff)))
   }
 }
