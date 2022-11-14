@@ -130,6 +130,7 @@ object JavaEmitter {
     case w: DefWire => Seq()
     case m: DefMemory => Seq()
     case i: WDefInstance => Seq()
+    case v: Verification if v.op == Formal.Assert => Seq(s"if (${emitExpr(v.en)} && !(${emitExpr(v.pred)})) {assert_triggered = true; assert_exit_code = -123;}")
     case _ => throw new Exception(s"Don't yet support $s")
   }
 

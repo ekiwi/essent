@@ -222,7 +222,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       case cp: CondPart =>
         writeLines(1, s"private void ${genEvalFuncName(cp.id)}() {")
         if (!cp.alwaysActive)
-          writeLines(2, s"if (update_registers) $flagVarName[${cp.id}] = false;")
+          writeLines(2, s"$flagVarName[${cp.id}] = false;")
         if (opt.trackParts)
           writeLines(2, s"$actVarName[${cp.id}] += 1;")
 
@@ -327,7 +327,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     else
       writeBodyInner(2, sg, opt)
     if (containsAsserts)
-      writeLines(2, "if (done_reset && update_registers && assert_triggered) stop_codes.add(assert_exit_code);")
+      writeLines(2, "if (done_reset && update_registers && assert_triggered) {System.out.println(assert_exit_code); System.exit(assert_exit_code);}")
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, JavaEmitter.cache)

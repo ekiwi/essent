@@ -31,6 +31,14 @@ trait IsSimulator {
 /** Work in progress. Only takes in strings for now. */
 object SimulatorWrapper {
   def apply(source : String, optimization : String = "O3", partCutoff: Int = 8): SimulatorWrapper = {
-    new SimulatorWrapper(JavaRuntimeCompiler.compile(Driver.generateTester(source, optimization, partCutoff)))
+    val startTimeCompile = System.nanoTime
+    val path = Driver.generateTester(source, optimization, partCutoff)
+    val endTimeCompile = System.nanoTime
+    println(s"ESSENT time: ${(endTimeCompile - startTimeCompile)/1000000}")
+    val startTimeCompile2 = System.nanoTime
+    val si = new SimulatorWrapper(JavaRuntimeCompiler.compile(path))
+    val endTimeCompile2 = System.nanoTime
+    println(s"javac time: ${(endTimeCompile2 - startTimeCompile2)/1000000}")
+    si
   }
 }

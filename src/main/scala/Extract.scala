@@ -92,6 +92,7 @@ object Extract extends LazyLogging {
     case mw: MemWrite => Some(mw.memName)
     case p: Print => None
     case s: Stop => None
+    case s: Verification => None
     case r: DefRegister => None
     case m: DefMemory => None
     case EmptyStmt => None
@@ -109,6 +110,7 @@ object Extract extends LazyLogging {
     case cp: CondPart => UnknownType
     case p: Print => UnknownType
     case s: Stop => UnknownType
+    case s: Verification => UnknownType
     case _ => throw new Exception(s"can't find result type of: ${stmt.serialize}")
   }
 
@@ -149,13 +151,12 @@ object Extract extends LazyLogging {
       Seq(HyperedgeDep(mw.nodeName, deps.distinct, s))
     case p: Print =>
       val deps = (Seq(p.en) ++ p.args) flatMap findDependencesExpr
-      val uniqueName = "PRINTF" + emitExpr(p.clk) + deps.mkString("$") + Util.tidyString(p.string.serialize)
+      val uniqueName = p.name
       // FUTURE: more efficient unique name (perhaps line number?)
       Seq(HyperedgeDep(uniqueName, deps.distinct, p))
     case st: Stop =>
       val deps = findDependencesExpr(st.en)
-      val uniqueName = "STOP" + emitExpr(st.clk) + deps.mkString("$") + st.ret
-      // FUTURE: more unique name (perhaps line number?)
+      val uniqueName = st.name
       Seq(HyperedgeDep(uniqueName, deps, st))
     case r: DefRegister => Seq(HyperedgeDep(r.name, Seq(), r))
     case w: DefWire => Seq()
@@ -167,6 +168,10 @@ object Extract extends LazyLogging {
       val wayDeps = (wayHEDeps flatMap { _.deps }).distinct
       Seq(HyperedgeDep(cm.name, (condDeps ++ wayDeps).distinct, cm))
     case EmptyStmt => Seq()
+    case st: Verification =>
+      val deps = (findDependencesExpr(st.en) ++ findDependencesExpr(st.pred)).distinct
+      val uniqueName = st.name
+      Seq(HyperedgeDep(uniqueName, deps, st))
     case _ => throw new Exception(s"unexpected statement type! $s")
   }
 
