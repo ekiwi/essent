@@ -130,13 +130,16 @@ class GCDBenchmark extends AnyFreeSpec {
 
   "decoupledEssent" in {
     val startTimeCompile = System.nanoTime
-    val dut = SimulatorWrapper(source, "O3")
+    val dut = SimulatorWrapper(source)
     val endTimeCompile = System.nanoTime
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
     val repetitions = 6
     val numMax = 200
     val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y), computeGcd(x, y))
+    for((i, j, expected) <- testValues) {
+      println(s"$i $j $expected")
+    }
     var cycles = 0L
 
     val startTimeExecute = System.nanoTime

@@ -2564,4 +2564,12 @@ circuit CoreTester :
     cntr <= mux(reset, UInt<8>("h0"), _GEN_0)
     _T_386 <= imem._T_385.data
     _T_389 <= dmem._T_388.data
+    printf(clock, and(and(UInt<1>("h1"), _T_400), UInt<1>("h1")), "state: %d, cntr %d cycl %d\n", state, cntr, cycle) @[CoreTests.scala 41:9]
+    printf(clock, and(and(and(UInt<1>("h1"), _T_404), _T_418), UInt<1>("h1")), "Assertion failed\n    at CoreTests.scala:63 assert(cycle < maxcycles.U)\n") @[CoreTests.scala 63:13]
+    stop(clock, and(and(and(UInt<1>("h1"), _T_404), _T_418), UInt<1>("h1")), 1) @[CoreTests.scala 63:13]
+    printf(clock, and(and(and(and(UInt<1>("h1"), _T_404), _T_420), _T_422), UInt<1>("h1")), "cycles: %d\n", cycle) @[CoreTests.scala 65:15]
     printf(clock, and(and(and(and(UInt<1>("h1"), _T_404), _T_420), _T_429), UInt<1>("h1")), "Assertion failed: * tohost: %d *\n\n    at CoreTests.scala:66 assert((dut.io.host.tohost >> 1.U) === 0.U,\n", dut.io_host_tohost) @[CoreTests.scala 66:15]
+    stop(clock, and(and(and(and(UInt<1>("h1"), _T_404), _T_420), _T_429), UInt<1>("h1")), 1) @[CoreTests.scala 66:15]
+    stop(clock, and(and(and(and(UInt<1>("h1"), _T_404), _T_420), _T_431), UInt<1>("h1")), 0) @[CoreTests.scala 68:13]
+    stop(clock, and(and(and(and(UInt<1>("h1"), _T_404), _T_420), _T_433), UInt<1>("h1")), 0) @[CoreTests.scala 68:21]
+

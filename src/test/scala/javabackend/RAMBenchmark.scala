@@ -1,11 +1,9 @@
 package javabackend
 
-import essent.{IsSimulator, JavaRuntimeCompiler, SimulatorWrapper}
+import essent.SimulatorWrapper
 import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
-import treadle.{RandomSeedAnnotation, RandomizeAtStartupAnnotation, TreadleTester}
-
-import java.io.{FileOutputStream, PrintStream}
+import treadle.TreadleTester
 
 /**
  *  Benchmark for TLRAMStandalone.fir and ServTopWithRam.fir.
@@ -16,7 +14,10 @@ class RAMBenchmark extends AnyFreeSpec {
   "ServTopWithRamESSENT" in {
     val stream = getClass.getResourceAsStream("/ServTopWithRam.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
-    val sim = SimulatorWrapper(circuitSource)
+    val startTimeCompile = System.nanoTime
+    val sim = SimulatorWrapper(circuitSource, partCutoff=6)
+    val endTimeCompile = System.nanoTime
+    println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
     val inputSource = os.pwd / "src" / "test" / "resources" / "ServTopWithRam.txt"
     val inputs = os.read.lines(inputSource)
 
@@ -33,12 +34,16 @@ class RAMBenchmark extends AnyFreeSpec {
     }
     val endTime = System.nanoTime
     println(s"ServTopWithRam: ${(endTime - startTime) / 1000000} milliseconds")
+    println(s"ns per cycle: ${(endTime - startTime) / (828931 * iterations)}")
   }
 
   "ServTopWithRamTreadle" in {
     val stream = getClass.getResourceAsStream("/ServTopWithRam.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
-    val sim = TreadleTester(Seq(FirrtlSourceAnnotation(circuitSource), RandomSeedAnnotation(33), RandomizeAtStartupAnnotation))
+    val startTimeCompile = System.nanoTime
+    val sim = TreadleTester(Seq(FirrtlSourceAnnotation(circuitSource)))
+    val endTimeCompile = System.nanoTime
+    println(s"Treadle Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
     val inputSource = os.pwd / "src" / "test" / "resources" / "ServTopWithRam.txt"
     val inputs = os.read.lines(inputSource)
 
@@ -100,7 +105,10 @@ class RAMBenchmark extends AnyFreeSpec {
   "TLRAMStandaloneESSENT" in {
     val stream = getClass.getResourceAsStream("/TLRAMStandalone.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
+    val startTimeCompile = System.nanoTime
     val sim = SimulatorWrapper(circuitSource)
+    val endTimeCompile = System.nanoTime
+    println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
     val inputSource = os.pwd / "src" / "test" / "resources" / "TLRAMStandalone.txt"
     val inputs = os.read.lines(inputSource)
 
@@ -127,7 +135,10 @@ class RAMBenchmark extends AnyFreeSpec {
   "TLRAMStandaloneTreadle" in {
     val stream = getClass.getResourceAsStream("/TLRAMStandalone.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
+    val startTimeCompile = System.nanoTime
     val sim = TreadleTester(Seq(FirrtlSourceAnnotation(circuitSource)))
+    val endTimeCompile = System.nanoTime
+    println(s"Treadle Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
     val inputSource = os.pwd / "src" / "test" / "resources" / "TLRAMStandalone.txt"
     val inputs = os.read.lines(inputSource)
 

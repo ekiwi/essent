@@ -92,7 +92,7 @@ class GCDTest extends AnyFreeSpec{
     }
   }
 
-  "testZero" in {
+  "DeltaTest" in {
     val essentSim = SimulatorWrapper(source, partCutoff=2)
     val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
     val checkSignals = Seq("xInitial", "yInitial", "x", "y", "busy", "resultValid", "reset", "input_ready", "input_valid", "input_bits_value1", "input_bits_value2", "output_ready", "output_valid", "output_bits_value1", "output_bits_value2", "output_bits_gcd")

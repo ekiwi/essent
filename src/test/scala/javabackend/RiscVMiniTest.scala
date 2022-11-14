@@ -9,6 +9,7 @@ import treadle.{ClockInfoAnnotation, TreadleTester}
 import essent.SimulatorWrapper
 
 class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
+  val cycles = 400
   "deltaTest" in {
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
@@ -22,13 +23,12 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
       "dut.dpath.csr.MTIE", "dut.dpath.csr.MSIP", "dut.dpath.csr.MSIE", "dut.dpath.csr.mtimecmp", "dut.dpath.csr.mscratch",
       "dut.dpath.csr.mepc", "dut.dpath.csr.mcause", "dut.dpath.csr.mbadaddr", "dut.dpath.csr.mtohost", "dut.dpath.csr.mfromhost")
     val dut = new DeltaTester(treadleSim, essentSim, signals)
-    for (_ <- 0 to 400) {
+    for (_ <- 1 to cycles) {
       dut.step(true)
     }
   }
 
   "benchmarkEssent" in {
-    val cycles = 1000000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
@@ -37,7 +37,7 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
     println(s"Essent Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
     val startTimeExecute = System.nanoTime
-    for (_ <- 0 to cycles) {
+    for (_ <- 1 to cycles) {
       essentSim.step(true)
     }
     val endTimeExecute = System.nanoTime
@@ -49,7 +49,6 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
   }
 
   "benchmarkTreadle" in {
-    val cycles = 1000000
     val stream = getClass.getResourceAsStream("/core-simple.lo.fir")
     val input = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
@@ -58,8 +57,9 @@ class RiscVMiniTest extends AnyFreeSpec with Matchers with LazyLogging {
     println(s"Treadle Compilation Time: ${(endTimeCompile - startTimeCompile)/1000000} milliseconds")
 
     val startTimeExecute = System.nanoTime
-    for (_ <- 0 to cycles) {
+    for (i <- 1 to cycles) {
       treadleSim.step(1)
+      println(i)
     }
     val endTimeExecute = System.nanoTime
 
