@@ -34,7 +34,7 @@ class RAMBenchmark extends AnyFreeSpec {
     }
     val endTime = System.nanoTime
     println(s"ServTopWithRam: ${(endTime - startTime) / 1000000} milliseconds")
-    println(s"ns per cycle: ${(endTime - startTime) / (828931 * iterations)}")
+    println(s"ns per cycle: ${(endTime - startTime) / 828931}")
   }
 
   "ServTopWithRamTreadle" in {

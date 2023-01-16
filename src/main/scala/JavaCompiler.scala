@@ -222,7 +222,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
       case cp: CondPart =>
         writeLines(1, s"private void ${genEvalFuncName(cp.id)}() {")
         if (!cp.alwaysActive)
-          writeLines(2, s"$flagVarName[${cp.id}] = false;")
+          writeLines(2, s"if (update_registers) $flagVarName[${cp.id}] = false;")
         if (opt.trackParts)
           writeLines(2, s"$actVarName[${cp.id}] += 1;")
 
@@ -281,9 +281,6 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
           writeLines(2, s"${genEvalFuncName(cp.id)}();")
       case stmt => writeLines(2, emitStmt(stmt))
     }
-//    writeLines(2, "if (!update_registers) {")
-//    writeLines(3, "Arrays.fill(PARTflags, true);")
-//    writeLines(2, "}")
     writeLines(2, "regs_set = true;")
   }
 

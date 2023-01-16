@@ -3,7 +3,7 @@ package javabackend
 import essent.SimulatorWrapper
 import org.scalatest.freespec.AnyFreeSpec
 
-class Constellation extends AnyFreeSpec{
+class ConstellationBenchmark extends AnyFreeSpec{
   "TestConfig00" in {
     val stream = getClass.getResourceAsStream("/NoCChiselTester.lo.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")

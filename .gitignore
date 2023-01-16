@@ -11,19 +11,17 @@ utils/bin/essent.jar
 
 # IDE related
 .idea/*
-
-.DS_Store
-
-GCD.java
-GCD.class
-GCD.h
-DecoupledGCD.java
-DecoupledGCD.class
-DecoupledGCD.h
-test_run_dir/
-# runner.sh
 .metals/*
 project/*
 .vscode/*
 .bloop/*
 .scalafmt.conf
+
+# testing related
+*.opt.lo.fir
+src/test/resources/*.java
+src/test/resources/*.h
+src/test/resources/*.txt
+test_run_dir/
+
+.DS_Store
