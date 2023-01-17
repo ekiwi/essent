@@ -234,8 +234,11 @@ object JavaEmitter {
       s"$condName ? $tvalName : $fvalName"
     case w: WSubField =>
       val result = s"${emitBigIntExpr(w.expr)(null)}.${w.name}"
-      if (rn != null) rn.emit(result)
-      else result
+      val name = if (rn != null) rn.emit(result) else result
+      if (bitWidth(w.tpe) >= 64) name
+      else if (bitWidth(w.tpe) >= 2) s"BigInteger.valueOf($name)"
+      else if (isSInt(w)) s"$name ? BigInteger.ONE.negate() : BigInteger.ZERO"
+      else s"$name ? BigInteger.ONE : BigInteger.ZERO"
     case p: DoPrim =>
       val arg1 = emitBigIntExprWrap(p.args.head)
       val arg2 = if (primOp2Expr contains p.op) emitBigIntExprWrap(p.args(1))
