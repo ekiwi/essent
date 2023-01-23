@@ -1,7 +1,9 @@
 package javabackend
 
 import essent.SimulatorWrapper
+import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
+import treadle.TreadleTester
 
 class ConstellationBenchmark extends AnyFreeSpec{
   "TestConfig00" in {
@@ -13,15 +15,30 @@ class ConstellationBenchmark extends AnyFreeSpec{
     println(s"Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
 
     val startTime = System.nanoTime
+    sim.poke("reset", 1)
+    sim.step(true)
+    sim.poke("reset", 0)
     while (true) {
-      sim.step(update_registers = true)
+      sim.step(true)
     }
     val endTime = System.nanoTime
     println(s"Simulation Time: ${(endTime - startTime) / 1000000} milliseconds")
   }
 
-  "AXITestConfig03" in {
+  "TestConfig00Treadle" in {
     val stream = getClass.getResourceAsStream("/NoCChiselTester.lo.fir")
+    val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
+    val sim = TreadleTester(Seq(FirrtlSourceAnnotation(circuitSource)))
+    sim.poke("reset", 1)
+    sim.step(1)
+    sim.poke("reset", 0)
+    while (true) {
+      sim.step(1)
+    }
+  }
+
+  "AXITestConfig03" in {
+    val stream = getClass.getResourceAsStream("/AXI4NoCChiselTester.lo.fir")
     val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
     val startTimeCompile = System.nanoTime
     val sim = SimulatorWrapper(circuitSource)
@@ -29,8 +46,11 @@ class ConstellationBenchmark extends AnyFreeSpec{
     println(s"Compilation Time: ${(endTimeCompile - startTimeCompile) / 1000000} milliseconds")
 
     val startTime = System.nanoTime
+    sim.poke("reset", 1)
+    sim.step(true)
+    sim.poke("reset", 0)
     while (true) {
-      sim.step(update_registers = true)
+      sim.step(true)
     }
     val endTime = System.nanoTime
     println(s"Simulation Time: ${(endTime - startTime) / 1000000} milliseconds")
