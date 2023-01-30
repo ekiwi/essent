@@ -14,7 +14,7 @@ public abstract class Simulator {
 
     abstract public void poke(String var, BigInteger val);
 
-    abstract public void step(boolean update_registers);
+    abstract public boolean step(boolean update_registers);
 
     public boolean xorr(long x, int w) {
         int k = 0;

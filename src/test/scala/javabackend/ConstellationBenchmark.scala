@@ -18,23 +18,9 @@ class ConstellationBenchmark extends AnyFreeSpec{
     sim.poke("reset", 1)
     sim.step(true)
     sim.poke("reset", 0)
-    while (true) {
-      sim.step(true)
-    }
+    while (sim.step(true)) {}
     val endTime = System.nanoTime
     println(s"Simulation Time: ${(endTime - startTime) / 1000000} milliseconds")
-  }
-
-  "TestConfig00Treadle" in {
-    val stream = getClass.getResourceAsStream("/NoCChiselTester.lo.fir")
-    val circuitSource = scala.io.Source.fromInputStream(stream).getLines().mkString("\n")
-    val sim = TreadleTester(Seq(FirrtlSourceAnnotation(circuitSource)))
-    sim.poke("reset", 1)
-    sim.step(1)
-    sim.poke("reset", 0)
-    while (true) {
-      sim.step(1)
-    }
   }
 
   "AXITestConfig03" in {
@@ -49,9 +35,7 @@ class ConstellationBenchmark extends AnyFreeSpec{
     sim.poke("reset", 1)
     sim.step(true)
     sim.poke("reset", 0)
-    while (true) {
-      sim.step(true)
-    }
+    while (sim.step(true)) {}
     val endTime = System.nanoTime
     println(s"Simulation Time: ${(endTime - startTime) / 1000000} milliseconds")
   }

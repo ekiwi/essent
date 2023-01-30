@@ -316,7 +316,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     if (opt.useCondParts) {
       writeZoningPredecs(sg, condPartWorker, circuit.main, extIOMap, opt)
     }
-    writeLines(1, "public void eval(boolean update_registers, boolean verbose, boolean done_reset) {")
+    writeLines(1, "public boolean eval(boolean update_registers, boolean verbose, boolean done_reset) {")
     if (opt.trackParts || opt.trackSigs)
       writeLines(2, "cycle_count++;")
     if (opt.useCondParts)
@@ -324,7 +324,8 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     else
       writeBodyInner(2, sg, opt)
     if (containsAsserts)
-      writeLines(2, "if (done_reset && update_registers && assert_triggered) {System.out.println(assert_exit_code); System.exit(assert_exit_code);}")
+      writeLines(2, """if (done_reset && update_registers && assert_triggered) {System.out.format("Simulation exited with exit code %d%n", assert_exit_code); return false;}""")
+    writeLines(2, "return true;")
     writeLines(1, "}")
     writeLines(0, "")
     writeLines(1, JavaEmitter.cache)
@@ -333,8 +334,8 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(0, "")
     writePoke(circuit)
     writeLines(0, "")
-    writeLines(1, "@Override public void step(boolean update_registers) {")
-    writeLines(2, "eval(update_registers, true, true);")
+    writeLines(1, "@Override public boolean step(boolean update_registers) {")
+    writeLines(2, "return eval(update_registers, true, true);")
     writeLines(1, "}")
     writeLines(0, "}")
   }
