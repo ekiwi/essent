@@ -96,7 +96,7 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
     writeLines(1, m.ports flatMap emitPort(topLevel = true))
     writeLines(1, s"public ${m.name}() {")
     writeLines(1, "}")
-    writeLines(0, s"} $modName;")
+    writeLines(0, s"}")
   }
 
 
