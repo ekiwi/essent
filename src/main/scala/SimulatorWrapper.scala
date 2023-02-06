@@ -14,6 +14,7 @@ class SimulatorWrapper(sim : Simulator) extends IsSimulator {
 
   def step(update_registers: Boolean, checkSignal: Boolean = true): Boolean = {
     stale = true
+    // TODO implement VCD dumping here
     sim.step(update_registers)
   }
 
