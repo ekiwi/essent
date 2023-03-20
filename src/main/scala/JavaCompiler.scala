@@ -1,7 +1,6 @@
 package essent
 
 import java.io.{File, FileWriter, Writer}
-
 import essent.JavaEmitter._
 import essent.Extract._
 import essent.ir._
@@ -11,8 +10,9 @@ import firrtl.ir._
 import firrtl.options.Dependency
 import firrtl.stage.TransformManager.TransformDependency
 import firrtl.stage.{FirrtlCircuitAnnotation, FirrtlStage, RunFirrtlTransformAnnotation, transforms}
+import _root_.logger._
 
-import logger._
+import scala.math.BigInt
 
 
 class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
@@ -132,12 +132,27 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
         case m : Module =>
           val registers = findInstancesOf[DefRegister](m.body)
           val registerDecs = registers flatMap {
-            d: DefRegister => Seq(s"""case "$fullName${d.name}": return ${asBigInt(Reference(d), fullName)};""")
+            d: DefRegister => d.tpe match {
+              case UIntType(IntWidth(w)) =>
+                if (w == 64) {
+                  Seq(s"""case "$fullName${d.name}": return (${asBigInt(Reference(d), fullName)}).and(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE));""")
+                } else {
+                  Seq(s"""case "$fullName${d.name}": return ${asBigInt(Reference(d), fullName)};""")
+                }
+              case SIntType(IntWidth(_)) =>
+                Seq(s"""case "$fullName${d.name}": return ${asBigInt(Reference(d), fullName)};""")
+            }
           }
           val portDecs = m.ports flatMap {
             p: Port => p.tpe match {
               case ClockType => Seq()
-              case _ =>
+              case UIntType(IntWidth(w)) =>
+                if (m.name != circuit.main) Seq()
+                else {
+                  if (w == 64) Seq(s"""case "$fullName${p.name}": return (${asBigInt(Reference(p), fullName)}).and(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE));""")
+                  else Seq(s"""case "$fullName${p.name}": return ${asBigInt(Reference(p), fullName)};""")
+                }
+              case SIntType(IntWidth(_)) =>
                 if (m.name != circuit.main) Seq()
                 else Seq(s"""case "$fullName${p.name}": return ${asBigInt(Reference(p), fullName)};""")
             }
@@ -163,14 +178,28 @@ class EssentJavaEmitter(opt: OptFlags, writer: Writer) extends LazyLogging {
         case m: Module =>
           val registers = findInstancesOf[DefRegister](m.body)
           val registerDecs = registers flatMap {
-            d: DefRegister => Seq(s"""case "$fullName${d.name}": $fullName${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
+            d: DefRegister =>
+              d.tpe match {
+                case UIntType(IntWidth(w)) =>
+                  if (w == 64) {
+                    Seq(s"""case "$fullName${d.name}": $fullName${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
+                  } else {
+                    Seq(s"""case "$fullName${d.name}": $fullName${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
+                  }
+                case SIntType(IntWidth(_)) =>
+                  Seq(s"""case "$fullName${d.name}": $fullName${d.name} = ${fromBigInt(Reference(d), "val")}; return;""")
+              }
           }
           val portDecs = m.ports flatMap {
             p: Port =>
               p.tpe match {
                 case ClockType => Seq()
-                case _ =>
+                case UIntType(IntWidth(_)) =>
                   if (m.name != circuit.main) Seq()
+                  else Seq(s"""case "$fullName${p.name}": $fullName${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
+                case SIntType(IntWidth(w)) =>
+                  if (m.name != circuit.main) Seq()
+                  else if (w == 64) Seq(s"""case "$fullName${p.name}": $fullName${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
                   else Seq(s"""case "$fullName${p.name}": $fullName${p.name} = ${fromBigInt(Reference(p), "val")}; return;""")
               }
           }

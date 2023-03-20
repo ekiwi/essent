@@ -53,7 +53,7 @@ class PrimOpTest extends AnyFreeSpec {
   }
 
   "add" in {
-    for (w <- List(1, 2, 63, 64); v <- List(1, 2,63, 64)) {
+    for (w <- List(1, 2, 63, 64); v <- List(1, 2, 63, 64)) {
       val source =
         s"""
            |circuit PrimOpTester :
@@ -183,7 +183,7 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2"))
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2", "io_UArg1", "io_UArg2"))
       val UIntValues = generateUIntTuples(w, v)
       val SIntValues = generateSIntTuples(w, v)
       runTestBinary(dut, UIntValues, SIntValues)
@@ -460,7 +460,7 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_SArg1", "io_SArg2", "io_UArg1", "io_UArg2"))
       val UIntValues = generateUIntTuples(w, v)
       val SIntValues = for {_ <- 1 to numInputs} yield (BigInt(w, rand) - (BigInt(1) << (w - 1)), BigInt(v, rand))
       runTestBinary(dut, UIntValues, SIntValues)
@@ -529,7 +529,7 @@ class PrimOpTest extends AnyFreeSpec {
            |    io.SOut <= _io_SOut_T""".stripMargin
       val essentSim = SimulatorWrapper(source)
       val treadleSim = TreadleTester(Seq(FirrtlSourceAnnotation(source)))
-      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut"))
+      val dut = new DeltaTester(treadleSim, essentSim, Seq("io_UOut", "io_SOut", "io_UArg", "io_SArg"))
       val UIntValues = generateUInts(w)
       val SIntValues = generateSInts(w)
       runTestUnary(dut, UIntValues, SIntValues)
