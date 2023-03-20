@@ -138,7 +138,7 @@ class GCDBenchmark extends AnyFreeSpec {
     val numMax = 200
     val testValues = for {x <- 2 to numMax; y <- 2 to numMax} yield (BigInt(x), BigInt(y), computeGcd(x, y))
     for((i, j, expected) <- testValues) {
-      println(s"$i $j $expected")
+      // println(s"$i $j $expected")
     }
     var cycles = 0L
 
