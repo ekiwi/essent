@@ -1,33 +1,30 @@
 package essent
 
-import os.list
-
 import scala.collection.mutable.ListBuffer
-
 import java.io._
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import scala.util.Random
 
 object VCD {
 
-  var to_be_written = ListBuffer[String]()
+  var toBeWritten = ListBuffer[String]()
   var filename = "test.vcd"
-  var last_signal = List[Product]()
   var time = 0
-  var signal_symbol = List[String]()
+  var allSignals = List.empty[(String, Int, String)]
+  var currSignalNum = 0
+  var currSignalVals = List.empty[(String, Int)]
+  var prevSignalVals = List.empty[(String, Int)]
 
   def setFile(f: String = "test.vcd"): Unit = {
     filename = f
   }
 
-  def writeHeader(v: String = "0.1", t: String = "1ns"): Unit={
-    val curr_time = LocalDateTime.now
+  def writeHeader(v: String = "0.1", t: String = "1ns"): Unit = {
+    val currTime = LocalDateTime.now
     val version = v
     val timescale = t
 
     val header = s"""$$version $version $$end
-      |$$date $curr_time $$end
+      |$$date $currTime $$end
       |$$timescale $timescale $$end""".stripMargin
 
     addToStack(header)
@@ -35,41 +32,18 @@ object VCD {
   }
 
   def addToStack(s: String): Unit = {
-    to_be_written.append(s)
+    toBeWritten.append(s)
   }
 
   def writeVCD(): Unit = {
-    val to_be_written_copy = to_be_written.clone()
-    to_be_written.clear()
-    writeFile(filename, to_be_written_copy)
-  }
-
-  def signalChange(signalChanges: List[Product]) {
-//    val signalNames = signal_symbol.productIterator.toList
-    for (signalChange <- signalChanges) {
-      var timeChanged = false
-      var changedValues = ""
-
-      for (i <- 0 until signalChange.productArity) {
-        if (last_signal.isEmpty || signalChange.productElement(i) != last_signal.head.productElement(i)) {
-          if(!timeChanged){
-            changedValues += s"#$time "
-            timeChanged = true
-          }
-          changedValues += s"${signalChange.productElement(i)}${signal_symbol(i)} "
-        }
-      }
-      if(!changedValues.equals("")){
-        addToStack(changedValues)
-      }
-    }
-    time += 1
-    last_signal = signalChanges
+    val toBeWrittenCopy = toBeWritten.clone()
+    toBeWritten.clear()
+    writeFile(filename, toBeWrittenCopy)
   }
 
   def writeFile(filename: String, lines: Seq[String]): Unit = {
     val nonEmptyLines = lines.filter(_.trim.nonEmpty)
-    if(nonEmptyLines.isEmpty) {
+    if (nonEmptyLines.isEmpty) {
       return
     }
     val pw = new PrintWriter(new FileOutputStream(new File(filename), true))
@@ -87,28 +61,32 @@ object VCD {
     bw.close()
   }
 
-  def definitionCreator(signal: Product, signalBits: Product): Unit = {
+  def footer(): Unit = {
+    addToStack(s"$$end")
+    writeVCD()
+  }
 
-    def generateUniqueChar(n: Int, existingChars: List[String]): String = {
-      val alphabet = "!#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-      val randomChars = Random.shuffle(alphabet.toList).take(n).mkString
-      if (existingChars.contains(randomChars)) {
-        generateUniqueChar(n+1, existingChars)
-      } else {
-        randomChars
-      }
+  def nextCombination(value: BigInt): String = {
+    val alphabet =
+      "!#$%&'()*+,-./:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+    if (value < 82) {
+      alphabet(value.toInt).toString
+    } else {
+      val digit = nextCombination(value % 82)
+      val upper = nextCombination(value / 82)
+      upper + digit
     }
+  }
 
-    var signal_reference_names = List[String]()
-    for (i<-0 until signal.productArity){
-      signal_reference_names = signal_reference_names :+ generateUniqueChar(1, signal_reference_names)
-    }
+  def addSignal(signalName: String, signalWidth: Int): Unit = {
+    allSignals =
+      allSignals :+ (signalName, signalWidth, nextCombination(currSignalNum))
+    currSignalNum = currSignalNum + 1
+  }
 
-    signal_symbol = signal_reference_names
-
-    addToStack("$scope module top $end")
-    for (i <- 0 until signal.productArity) {
-      addToStack(s"$$var wire ${signalBits.productElement(i)} ${signal_symbol(i)} ${signal.productElement(i)} $$end")
+  def definitionCreatorNew(): Unit = {
+    for ((signalName, signalWidth, signalNick) <- allSignals) {
+      addToStack(s"$$var wire $signalWidth $signalNick $signalName $$end")
     }
     addToStack("$upscope $end")
     addToStack("$enddefinitions $end")
@@ -116,12 +94,45 @@ object VCD {
     writeVCD()
   }
 
-  def valueDumper(signalChanges: List[Product]): Unit = {
-    signalChange(signalChanges)
+  def signalDumper(): Unit = {
+    var changedValues = List.empty[(String, Int)]
+    for ((signalName, signalValue) <- currSignalVals) {
+      val signalSymbol =
+        allSignals.find(_._1 == signalName).map(_._3).get.toString
+      if (prevSignalVals.exists { case (value, _) => value == signalSymbol }) {
+        if (prevSignalVals.exists(_ == (signalSymbol, signalValue))) {
+          // Nothing since value hasn't changed
+        } else {
+          val updatedList = prevSignalVals.map {
+            case (name, value) if name == signalSymbol => (name, signalValue)
+            case other                                 => other
+          }
+          prevSignalVals = updatedList
+          changedValues = changedValues :+ (signalSymbol, signalValue)
+        }
+      } else {
+        prevSignalVals = prevSignalVals :+ (signalSymbol, signalValue)
+        changedValues = changedValues :+ (signalSymbol, signalValue)
+      }
+    }
+    if (changedValues.nonEmpty) {
+      var changedString = s"#${time}"
+      for ((signalSymbol, signalValue) <- changedValues) {
+        changedString += s" ${signalValue}${signalSymbol}"
+      }
+      addToStack(changedString)
+      writeVCD()
+    }
+    currSignalVals = List.empty[(String, Int)]
   }
 
-  def footer(): Unit = {
-    addToStack(s"$$end")
-    writeVCD()
+  def timeStep(): Unit = {
+    signalDumper()
+    time = time + 1
   }
+
+  def addValToStack(name: String, value: Int): Unit = {
+    currSignalVals = currSignalVals :+ (name, value)
+  }
+
 }

@@ -1,0 +1,20 @@
+$version 0.1 $end
+$date 2023-03-20T00:51:00.274664 $end
+$timescale 1ns $end
+$var wire 1 ! one $end
+$var wire 1 # two $end
+$var wire 1 $ three $end
+$var wire 1 % four $end
+$var wire 1 & five $end
+$var wire 1 ' six $end
+$var wire 1 ( seven $end
+$var wire 1 ) eight $end
+$var wire 1 * nine $end
+$var wire 1 + ten $end
+$var wire 1 , eleven $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+#0 1! 1# 1$ 1&
+#1 0# 1%
+$end
